@@ -25,7 +25,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(
         prog="hexatess",
         description="Hexatess Code - hexagonal-grid 2D barcode "
-                    "(reference implementation, spec v0.1)")
+                    "(reference implementation, spec v0.2)")
     ap.add_argument("text", nargs="?", help="text to encode (UTF-8)")
     ap.add_argument("-o", "--output", default="hexatess.png",
                     help="output PNG path (default: %(default)s)")
@@ -46,7 +46,7 @@ def main(argv=None):
         run_tests()
 
     if args.demo or args.text:
-        text = args.text or "Hexatess Code v0.1 - " * 6
+        text = args.text or "Hexatess Code v0.2 - " * 6
         grid, params = encode(text, ec_pct=args.ec, mask_id="auto"
                               if args.mask is None else args.mask)
         render(grid, args.output, size_px=args.size)

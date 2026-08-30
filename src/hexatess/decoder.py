@@ -28,7 +28,7 @@ def decode(grid, params=None):
     grid : dict
         Mapping ``{(q, r): 0|1}``.
     params : dict, optional
-        Ignored; kept for API symmetry with v0.1 of the prototype.
+        Ignored; kept for API symmetry with the original prototype.
 
     Returns
     -------

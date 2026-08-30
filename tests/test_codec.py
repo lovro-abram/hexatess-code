@@ -67,7 +67,7 @@ def test_bullseye_pattern():
     grid, params = encode("bullseye", ec_pct=30)
     for k in range(BULLSEYE_RINGS + 1):
         for c in hex_ring(k):
-            assert grid[c] == k % 2
+            assert grid[c] == 1 - (k % 2)   # centre DARK (spec v0.2)
     key = hex_ring(KEY_RING)
     for c in key[2:]:
         assert grid[c] == 0

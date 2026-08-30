@@ -1,4 +1,9 @@
 # Hexatess Koda 🐝 (slovenska verzija)
+[![PyPI](https://img.shields.io/pypi/v/hexatess-code)](https://pypi.org/project/hexatess-code/) 
+
+[![Python](https://img.shields.io/pypi/pyversions/hexatess-code)](https://pypi.org/project/hexatess-code/) 
+
+[![CI](https://github.com/lovro-abram/hexatess-code/actions/workflows/ci.yml/badge.svg)](https://github.com/lovro-abram/hexatess-code/actions/workflows/ci.yml) 
 
 **Eksperimentalna 2D koda na šestkotni mreži** — s šestkotnim
 bullseye najditeljem, spiralno serijalizacijo in prosto izbiro
@@ -22,8 +27,8 @@ besedilo, stat = decode(grid)       # ('Živjo, Hexatess!', {...})
   0–4), orientacijski ključ (obroč 5: dve temni celici), podatkovno
   območje (obroči 6 …) v spiralnem vrstnem redu in tiho območje
   vsaj 1 modul;
-* **B** — bližnjica finderja: svetel center (pravilo v0.1:
-  `bit = obroč mod 2`), izmenično temni/svetli obroči in ključ — prvi
+* **B** — bližnjica finderja: temen center (pravilo v0.2:
+  `bit = 1 − (obroč mod 2)`), izmenično temni/svetli obroči in ključ — prvi
   dve celici kanoničnega vrstnega reda obroča 5 sta temni, kar lomi
   60-kratno simetrijo in označuje smer začetka spirale;
 * **C** — spiralni vrstni red bitov čez obroča 6–7 (bit 0 na celici
@@ -103,7 +108,7 @@ celih bajtov.
 Format je namenoma **specifikacija-na-prvem-mestu**: vse, kar potrebujete
 za neodvisno implementacijo, je v [`SPECIFICATION.md`](SPECIFICATION.md),
 datoteka
-[`test_vectors/vectors_v0.1.json`](test_vectors/vectors_v0.1.json)
+[`test_vectors/vectors_v0.2.json`](test_vectors/vectors_v0.2.json)
 pa vsebuje fiksne vhode/izhode (mreže, glave, poškodovane simbole,
 pričakovane rezultate) za preverjanje skladnosti. Če vaš dekodirnik v
 Rust/Go/JS prenese vektorje, govori Hexatess.

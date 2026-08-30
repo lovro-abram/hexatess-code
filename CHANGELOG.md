@@ -5,6 +5,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/);
 versioning follows semver. **Spec** = symbol format version,
 **lib** = reference implementation version.
 
+## [0.2.0] — 2026-08-30
+
+### Changed (spec 0.2) — BREAKING
+- **Bullseye centre polarity flipped: the centre module is now DARK**
+  (`bit = 1 − (k mod 2)` for finder rings 0–4). Rationale: a solid
+  high-contrast core markedly improves finder detectability under
+  blur and low-resolution imaging, and matches the finder conventions
+  of Aztec Code and MaxiCode. Everything else — key ring, header,
+  Reed–Solomon, masks, spiral serialization, capacities — is unchanged.
+- Conformance vectors regenerated: `test_vectors/vectors_v0.2.json`
+  (supersedes `vectors_v0.1.json`). Symbols encoded with v0.1 are not
+  compatible with v0.2 decoders and vice versa.
+
 ## [0.1.0] — 2026-08-30
 
 ### Renamed (pre-release)

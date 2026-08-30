@@ -16,7 +16,7 @@ from test_vectors.generate_vectors import grid_from_hex
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-VECTOR_FILE = os.path.join(ROOT, "test_vectors", "vectors_v0.1.json")
+VECTOR_FILE = os.path.join(ROOT, "test_vectors", "vectors_v0.2.json")
 
 with open(VECTOR_FILE, "r", encoding="utf-8") as fh:
     VECTORS = json.load(fh)

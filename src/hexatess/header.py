@@ -7,7 +7,7 @@ import math
 from .reedsolomon import rs_encode_msg, rs_correct_msg
 
 # ----------------------------------------------------------------------
-# Symbol constants (fixed in specification v0.1)
+# Symbol constants (fixed in specification v0.2)
 # ----------------------------------------------------------------------
 
 BULLSEYE_RINGS = 4     # rings 0..4 form the hexagonal bullseye finder

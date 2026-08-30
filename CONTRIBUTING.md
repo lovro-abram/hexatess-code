@@ -11,7 +11,7 @@ Thank you for helping an experimental format grow! 🐝
    first.
 2. **Conformance vectors are sacred.** If your change alters any byte
    of any generated symbol, the vectors in
-   `test_vectors/vectors_v0.1.json` must be regenerated
+   `test_vectors/vectors_v0.2.json` must be regenerated
    (`python test_vectors/generate_vectors.py --write`) and the reason
    must be documented. Vectors are only regenerated for new spec
    versions, never silently.
@@ -33,7 +33,7 @@ These are the highest-value contributions for making the format
 adoptable:
 
 * **JavaScript/TypeScript SDK** — port the encoder + renderer to the
-  browser; verify against `test_vectors/vectors_v0.1.json`.
+  browser; verify against `test_vectors/vectors_v0.2.json`.
 * **Camera decoder (Python or JS)** — bullseye detection (concentric
   alternating ring search) + orientation from the ring-5 key pair +
   perspective correction; the spec's §10 describes the reference

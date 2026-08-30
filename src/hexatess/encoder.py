@@ -2,10 +2,11 @@
 
 Turns UTF-8 text into a hexagonal module grid ``{(q, r): 0|1}``.
 
-Layout summary (specification v0.1):
+Layout summary (specification v0.2):
 
 * rings 0..4 -- hexagonal bullseye finder, ring ``k`` filled with
-  ``k mod 2`` (bit 1 = dark module; the centre module is LIGHT in v0.1);
+  ``1 - (k mod 2)`` (bit 1 = dark module; the centre module is DARK
+  since spec v0.2);
 * ring 5     -- orientation key: all modules light except the first two
   cells of ``hex_ring(5)`` (``(-5, 5)`` and ``(-4, 5)``) which are dark;
 * rings 6..rmax -- payload bits in spiral order: header (80 bits,
@@ -62,7 +63,8 @@ def encode(text: str, ec_pct: int = 30, mask_id="auto", min_rings=None):
     data = text.encode("utf-8")
     if len(data) > MAX_DATA_BYTES:
         raise ValueError(
-            "v0.1 supports up to %d bytes of data" % MAX_DATA_BYTES)
+            "the radius limit supports up to %d bytes of data"
+            % MAX_DATA_BYTES)
     blocks = plan_blocks(len(data), ec_pct)
     ecc_total = sum(e for _, e in blocks)
     need_bits = MODE_BITS + (len(data) + ecc_total) * 8
@@ -110,7 +112,7 @@ def encode(text: str, ec_pct: int = 30, mask_id="auto", min_rings=None):
     grid = {}
     for k in range(BULLSEYE_RINGS + 1):
         for c in hex_ring(k):
-            grid[c] = k % 2          # centre LIGHT in v0.1, rings alternate
+            grid[c] = 1 - (k % 2)    # centre DARK (v0.2), rings alternate
     for c in hex_ring(KEY_RING):
         grid[c] = 0
     key = hex_ring(KEY_RING)

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Generate / verify conformance test vectors for Hexatess Code v0.1.
+"""Generate / verify conformance test vectors for Hexatess Code v0.2.
 
-The committed file ``vectors_v0.1.json`` lets independent implementations
-(any language) verify conformance to specification v0.1:
+The committed file ``vectors_v0.2.json`` lets independent implementations
+(any language) verify conformance to specification v0.2:
 
 * ``encode_vectors`` -- fixed inputs (text, ec_pct) with the expected
   symbol parameters, protected mode message and the full canonical grid
@@ -41,7 +41,7 @@ from hexatess import (                      # noqa: E402
 )
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-VECTOR_FILE = os.path.join(HERE, "vectors_v0.1.json")
+VECTOR_FILE = os.path.join(HERE, "vectors_v0.2.json")
 
 GENERATED = "2026-08-30"
 
@@ -52,7 +52,7 @@ ENCODE_CASES = [
     ("hello", "Hello, Hexatess!", 30),
     ("utf8_slo", "ŠČŽ življenje je kodiranje", 30),
     ("utf8_emoji", "bee \U0001F41D hive", 50),
-    ("mid", "Hexatess Code v0.1 reference vector", 55),
+    ("mid", "Hexatess Code v0.2 reference vector", 55),
     ("digits", "1234567890" * 8, 10),
     ("url", "https://example.org/hexatess", 25),
     ("min_ec", "compact", 5),
@@ -194,7 +194,7 @@ def build_vectors():
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--write", action="store_true",
-                    help="write vectors_v0.1.json")
+                    help="write vectors_v0.2.json")
     ap.add_argument("--verify", action="store_true",
                     help="verify committed vectors against the library")
     args = ap.parse_args(argv)

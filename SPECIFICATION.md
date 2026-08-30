@@ -1,4 +1,4 @@
-# Hexatess Code Specification — Version 0.1
+# Hexatess Code Specification — Version 0.2
 
 **Status:** Stable draft (reference implementation available)
 **Date:** 2026-08-30
@@ -65,7 +65,7 @@ A Hexatess Code symbol consists of:
 
 | Region        | Rings        | Content                                        |
 |---------------|--------------|------------------------------------------------|
-| Bullseye      | 0 … 4        | finder pattern, `bit = k mod 2`                |
+| Bullseye      | 0 … 4        | finder pattern, `bit = 1 − (k mod 2)`          |
 | Key ring      | 5            | orientation key (see §2.2)                     |
 | Data region   | 6 … rmax     | header + masked payload, spiral order (§3, §4) |
 
@@ -74,12 +74,15 @@ contains `3·rmax·(rmax+1) + 1 − 91` modules.
 
 ### 2.1 Bullseye finder
 
-For every module of ring `k`, `0 ≤ k ≤ 4`, set `bit = k mod 2`.
-Consequence (v0.1): the **centre module is LIGHT** (ring 0 → 0),
-ring 1 is dark, ring 2 light, ring 3 dark, ring 4 light.
-*Note:* this polarity is a historical property of v0.1 kept for
-backward-compatible conformance; a dark centre is a v0.2 candidate
-change (see §11).
+For every module of ring `k`, `0 ≤ k ≤ 4`, set `bit = 1 − (k mod 2)`.
+Consequence (v0.2): the **centre module is DARK** (ring 0 → 1),
+ring 1 is light, ring 2 dark, ring 3 light, ring 4 dark.
+*Note:* v0.1 used the opposite polarity (light centre, `bit = k mod 2`).
+The dark centre improves finder detectability — it gives the bullseye
+a solid high-contrast core that survives blur and low-resolution
+imaging, matching the finder conventions of Aztec Code and MaxiCode.
+The change is format-breaking; conformance vectors for v0.1 are
+superseded.
 
 ### 2.2 Orientation key (ring 5)
 
@@ -261,7 +264,7 @@ the exact block rule of §5.2):
 | 28  | 2346 | 265 | 216 | 181 | 148 |
 | 31  | 2886 | 329 | 266 | 225 | 183 |
 
-The 12-bit length field allows up to 4095 bytes, but the v0.1 radius
+The 12-bit length field allows up to 4095 bytes, but the radius
 limit (31 rings) caps capacity at **329 bytes (EC 5)**. Larger radii
 are a v0.2 candidate extension.
 
@@ -293,15 +296,15 @@ are a v0.2 candidate extension.
    RS-correct each block independently; reject on failure.
 6. Decode the payload bytes as UTF-8.
 
-## 11. Design notes and v0.2 candidates
+## 11. Design notes and future candidates
 
-* **Centre polarity.** v0.1's bullseye centre is LIGHT (bit = k mod 2).
-  A dark centre would improve finder detectability; changing it is a
-  breaking change reserved for v0.2.
+* **Centre polarity (resolved in v0.2).** The bullseye centre is DARK
+  (`bit = 1 − (k mod 2)`), chosen for stronger detectability; the
+  opposite light-centre polarity of v0.1 is deprecated.
 * **Erasure decoding.** Modules occluded by a detected blob can be
   declared erasures, doubling correctable symbol counts (RS corrects
-  `nsym` erasures vs `nsym/2` errors). Not part of v0.1.
-* **Camera decoding.** v0.1 defines only ideal-grid sampling; finder
+  `nsym` erasures vs `nsym/2` errors). Not part of v0.2.
+* **Camera decoding.** v0.2 defines only ideal-grid sampling; finder
   detection and perspective correction are ecosystem work items.
 * **Larger radii.** Extending `rmax` beyond 31 requires only widening
   the header's radius field (a breaking change).
@@ -313,7 +316,7 @@ are a v0.2 candidate extension.
 ## 12. Conformance
 
 An implementation is conformant with this specification if, for every
-vector in `test_vectors/vectors_v0.1.json`:
+vector in `test_vectors/vectors_v0.2.json`:
 
 1. its encoder produces the recorded symbol parameters, mode message
    bytes and canonical grid serialization for the given input; and
@@ -334,7 +337,7 @@ hexadecimal.
 | `BULLSEYE_RINGS`| 4     | finder rings (0…4)                     |
 | `KEY_RING`      | 5     | orientation key ring                   |
 | `DATA_RING0`    | 6     | first payload ring                     |
-| `MAX_RINGS`     | 31    | radius limit (v0.1)                    |
+| `MAX_RINGS`     | 31    | radius limit (v0.2)                    |
 | `BLOCK_DATA_MAX`| 50    | data bytes per RS block                |
 | `MODE_BYTES`    | 5     | header data bytes                      |
 | `MODE_ECC`      | 5     | header ECC symbols                     |

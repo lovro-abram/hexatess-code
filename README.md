@@ -1,4 +1,9 @@
 # Hexatess Code 🐝
+[![PyPI](https://img.shields.io/pypi/v/hexatess-code)](https://pypi.org/project/hexatess-code/) 
+
+[![Python](https://img.shields.io/pypi/pyversions/hexatess-code)](https://pypi.org/project/hexatess-code/) 
+
+[![CI](https://github.com/lovro-abram/hexatess-code/actions/workflows/ci.yml/badge.svg)](https://github.com/lovro-abram/hexatess-code/actions/workflows/ci.yml) 
 
 **An experimental 2D barcode on a hexagonal grid** — with a hexagonal
 bullseye finder, spiral serialization and a continuously selectable
@@ -21,7 +26,7 @@ text, stats = decode(grid)          # ('Hello, Hexatess!', {...})
 * **A** — a real encoded symbol: hexagonal bullseye finder (rings 0–4),
   orientation key (ring 5: two dark cells), data region (rings 6…)
   filled in spiral order, and a quiet zone of at least 1 module;
-* **B** — finder close-up: light centre (v0.1 rule `bit = ring mod 2`),
+* **B** — finder close-up: dark centre (rule `bit = 1 − ring mod 2`),
   alternating dark/light rings, and the key — the first two canonical
   ring-5 cells set dark, breaking the 60-fold symmetry and marking the
   spiral start direction;
@@ -102,7 +107,7 @@ concentrate inside whole bytes.
 The format is deliberately **specification-first**: everything needed
 for an independent implementation is in
 [`SPECIFICATION.md`](SPECIFICATION.md), and
-[`test_vectors/vectors_v0.1.json`](test_vectors/vectors_v0.1.json)
+[`test_vectors/vectors_v0.2.json`](test_vectors/vectors_v0.2.json)
 contains fixed inputs/outputs (grids, headers, damaged symbols, expected
 results) to verify conformance. If your Rust/Go/JS decoder passes the
 vectors, it speaks Hexatess Code.
