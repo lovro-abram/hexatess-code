@@ -21,7 +21,7 @@ Thank you for helping an experimental format grow! 🐝
 ## Development setup
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/hexatess-code
+git clone https://github.com/lovro-abram/hexatess-code
 cd hexatess-code
 pip install -e .[dev]
 pytest
