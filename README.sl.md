@@ -1,6 +1,8 @@
 # Hexatess Koda 🐝 (slovenska verzija)
 [![PyPI](https://img.shields.io/pypi/v/hexatess-code)](https://pypi.org/project/hexatess-code/) 
+
 [![Python](https://img.shields.io/pypi/pyversions/hexatess-code)](https://pypi.org/project/hexatess-code/) 
+
 [![CI](https://github.com/lovro-abram/hexatess-code/actions/workflows/ci.yml/badge.svg)](https://github.com/lovro-abram/hexatess-code/actions/workflows/ci.yml) 
 
 **Eksperimentalna 2D koda na šestkotni mreži** — s šestkotnim
