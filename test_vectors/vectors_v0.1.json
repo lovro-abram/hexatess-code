@@ -1,0 +1,318 @@
+{
+  "spec_version": "0.1",
+  "generator": "hexatess-code 0.1.0",
+  "generated": "2026-08-30",
+  "field": {
+    "primitive_poly": "0x11D",
+    "generator_alpha": 2
+  },
+  "canonical_serialization": "bits ordered by ring 0..rmax, cells in hex_ring(k) canonical order, packed MSB-first, right-padded with zeros to a byte boundary, lowercase hex",
+  "encode_vectors": [
+    {
+      "name": "empty",
+      "text": "",
+      "ec_pct": 5,
+      "data_len": 0,
+      "rmax": 8,
+      "mask": 1,
+      "blocks": [
+        [
+          0,
+          2
+        ]
+      ],
+      "mode_hex": "4108080000847afe3f7e",
+      "grid_sha256": "7dc9694fee91ff7e3bf3bcffef63b886228e792d381c6bc98c12ccfa993a8d96",
+      "grid_hex": "7e001ffff80000060000000821010000108f5fc7efca52dc1f0f8380"
+    },
+    {
+      "name": "one_byte",
+      "text": "A",
+      "ec_pct": 5,
+      "data_len": 1,
+      "rmax": 8,
+      "mask": 3,
+      "blocks": [
+        [
+          1,
+          2
+        ]
+      ],
+      "mode_hex": "4308080080f7ff13b068",
+      "grid_sha256": "39dc206b61b52dd7db903145330e57f193d62824e938d436575d6911205ff8e1",
+      "grid_hex": "7e001ffff800000600000008610100101effe2760d0362a6de0f0780"
+    },
+    {
+      "name": "hello",
+      "text": "Hello, Hexatess!",
+      "ec_pct": 30,
+      "data_len": 16,
+      "rmax": 11,
+      "mask": 6,
+      "blocks": [
+        [
+          16,
+          5
+        ]
+      ],
+      "mode_hex": "5e300808006c38751f50",
+      "grid_sha256": "837e91c3be9a58f851e8d760c6208ee8acbd50b1b98ea564159ca3c5f48b8a59",
+      "grid_hex": "7e001ffff80000060000000bc60101000d870ea3ea1fb900a4c7bf529da9826764de38dbc903591a4754ef87c1e0f83c1f08"
+    },
+    {
+      "name": "utf8_slo",
+      "text": "ŠČŽ življenje je kodiranje",
+      "ec_pct": 30,
+      "data_len": 30,
+      "rmax": 13,
+      "mask": 4,
+      "blocks": [
+        [
+          30,
+          9
+        ]
+      ],
+      "mode_hex": "6c30080f0027f54f75b3",
+      "grid_sha256": "63f342f4d18d07b208e6418ace11442c14db41747a21c5bb2511dce12b71c54d",
+      "grid_hex": "7e001ffff80000060000000d860101e004fea9eeb66c1135fad2e532ad1ae465975bd8086027ee5fda11a844a7d7fcd8886027f6a6622359259484059e0f07c3e0f87c1f00"
+    },
+    {
+      "name": "utf8_emoji",
+      "text": "bee 🐝 hive",
+      "ec_pct": 50,
+      "data_len": 13,
+      "rmax": 10,
+      "mask": 1,
+      "blocks": [
+        [
+          13,
+          7
+        ]
+      ],
+      "mode_hex": "5150080680bc6d421804",
+      "grid_sha256": "0d18f0df75d9e0e6f227b3530938031d151096d68f8919089d2f59276ec8aae8",
+      "grid_hex": "7e001ffff80000060000000a2a0100d0178da84300861e7a11bb3ab9497699a883a5edbac79b5ad55ae0"
+    },
+    {
+      "name": "mid",
+      "text": "Hexatess Code v0.1 reference vector",
+      "ec_pct": 55,
+      "data_len": 35,
+      "rmax": 14,
+      "mask": 4,
+      "blocks": [
+        [
+          35,
+          20
+        ]
+      ],
+      "mode_hex": "7458081180b6ad79d403",
+      "grid_sha256": "1b1c96cd5880d57d180192897a1d21f790ad01da957f4d8de17a7764f7f977b7",
+      "grid_hex": "7e001ffff80000060000000e8b01023016d5af3a807da9826764de38dbc92126b65a30ab6b6e8c7698f909e5e5167f58c9096586feb8384b76d2b6f3aacb2b74c0887da378d4e8edfd5842e423e0f8"
+    },
+    {
+      "name": "digits",
+      "text": "12345678901234567890123456789012345678901234567890123456789012345678901234567890",
+      "ec_pct": 10,
+      "data_len": 80,
+      "rmax": 17,
+      "mask": 4,
+      "blocks": [
+        [
+          40,
+          4
+        ],
+        [
+          40,
+          4
+        ]
+      ],
+      "mode_hex": "8c10102800e42fe71a92",
+      "grid_sha256": "ac334162b0f9b90f21e20f2a65efa8e588d75b34d8a0e487f5a9684d933711c7",
+      "grid_hex": "7e001ffff800000600000011820205001c85fce35252836b0dccf45052aa0f4d7c90f2230badad55b0b3836f2ddc745242aa4d4c7490d3238f8dbdd5b2a38b2f2cd47073422e4d5cf4d2d32bcf8cb5d192a30f2d3c5432734a6e6c5cf0f2c3afcd9cb59393befb46174566a960e1f0f83e1f06"
+    },
+    {
+      "name": "url",
+      "text": "https://example.org/hexatess",
+      "ec_pct": 25,
+      "data_len": 28,
+      "rmax": 12,
+      "mask": 5,
+      "blocks": [
+        [
+          28,
+          7
+        ]
+      ],
+      "mode_hex": "6528080e00fcb35f5902",
+      "grid_sha256": "d5c993befa6cd855a326448269f9a06fb124a64ae69d2e1d3cdcf0b6cc269645",
+      "grid_hex": "7e001ffff80000060000000ca50101c01f966beb204654dc18bbca6caeb67998888366c6f75b5be9cca65679988b21c52420e8ca2cd6c7bb383e08"
+    },
+    {
+      "name": "min_ec",
+      "text": "compact",
+      "ec_pct": 5,
+      "data_len": 7,
+      "rmax": 9,
+      "mask": 7,
+      "blocks": [
+        [
+          7,
+          2
+        ]
+      ],
+      "mode_hex": "4f08080380d5296d6439",
+      "grid_sha256": "ffd54d49ba8431afc6e6a2f30dc6fdd4bfbd6474c2bd33a4ceefa6235e7339a6",
+      "grid_hex": "7e001ffff800000600000009e10100701aa52dac872527b778b88943eb36d83c1f06"
+    },
+    {
+      "name": "max_ec",
+      "text": "resilience",
+      "ec_pct": 90,
+      "data_len": 10,
+      "rmax": 10,
+      "mask": 6,
+      "blocks": [
+        [
+          10,
+          9
+        ]
+      ],
+      "mode_hex": "5690080500ae4775c493",
+      "grid_sha256": "feea7c7a2160ad60e234e9c2c0492d9c9539f141c72ea52e86e0ed6cb6f2d5f8",
+      "grid_hex": "7e001ffff80000060000000ad20100a015c8eeb89278f9034467d7fa396941de55016ba50c7ed90afc20"
+    },
+    {
+      "name": "long_multiblock",
+      "text": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+      "ec_pct": 30,
+      "data_len": 250,
+      "rmax": 30,
+      "mask": 1,
+      "blocks": [
+        [
+          50,
+          15
+        ],
+        [
+          50,
+          15
+        ],
+        [
+          50,
+          15
+        ],
+        [
+          50,
+          15
+        ],
+        [
+          50,
+          15
+        ]
+      ],
+      "mode_hex": "f130287d004817ab6909",
+      "grid_sha256": "504eed2fef73bc3390c91f977c06c65dc4d9d7faf5148f48617de88cbc34ea74",
+      "grid_hex": "7e001ffff80000060000001e26050fa00902f56d212159ddbeae224051d99faea6624159ddbeae226051d99faea6624159ddbfae226051d99fbea6624159ddbfae226051599fbea6624151ddbfae266051599fbea6224151ddbfae266051599dbea6224151dd9fae266041599dbea6224051dd9fae266041599dbeae224051dd9faea6604159ddbeae224051d99faea6604159ddbeae226051d99faea6624159ddbeae226051d99fbea6624159ddbfae226051599fbea6624151ddbfae226051599fbea6224151ddbfae266051599dbea6224151dd9fae266051599dbea6224051dd9fae266041599dbeae224051dd9faea66041599dbeae224051d99faea6604159ddbeae224051d99faea6624159df753da530a16c5cf9b22e70e92f532ce9f3d6896f0b6525551dec0f5ccee29aca18ee56978216c9f39f9692bddb542d2172b1e41ed8ba6a51e1ab713c6db1c7012d2a6d61740d682d4c4aa3e1f0"
+    },
+    {
+      "name": "max_capacity",
+      "text": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+      "ec_pct": 5,
+      "data_len": 329,
+      "rmax": 31,
+      "mask": 0,
+      "blocks": [
+        [
+          47,
+          3
+        ],
+        [
+          47,
+          3
+        ],
+        [
+          47,
+          3
+        ],
+        [
+          47,
+          3
+        ],
+        [
+          47,
+          3
+        ],
+        [
+          47,
+          3
+        ],
+        [
+          47,
+          3
+        ]
+      ],
+      "mode_hex": "f80838a480f6132aa083",
+      "grid_sha256": "f832eece70707ec7a339c48b941ea171074ad18db33f55172e1e7fb4de5e7f9b",
+      "grid_hex": "7e001ffff80000060000001f010714901ec26554106ea6604159ddbeae226051d99faea6624159ddbfae226051d99fbea6624159ddbfae226051599fbea6624151ddbfae266051599fbea6224151ddbfae266051599dbea6224151dd9fae266041599dbea6224051dd9fae266041599dbeae224051dd9faea66041599dbeae224051d99faea6604159ddbeae226051d99faea6624159ddbeae226051d99fbea6624159ddbfae226051599fbea6624151ddbfae226051599fbea6224151ddbfae266051599dbea6224151dd9fae266051599dbea6224051dd9fae266041599dbea6224051dd9faea66041599dbeae224051d99faea6604159ddbeae224051d99faea6624159ddbeae226051d99fbea6624159ddbfae226051d99fbea6624151ddbfae226051599fbea6224151ddbfae266051599fbea6224151dd9fae266051599dbea6224151dd9fae266041599dbea6224051dd9faea66041599dbeae225df7a64208ddbde7220018d5ffe62a0439d57bc43a9800"
+    }
+  ],
+  "decode_vectors": [
+    {
+      "name": "damaged_correctable",
+      "source_case": "hello",
+      "flipped_cells_spiral_index": [
+        100,
+        140,
+        180
+      ],
+      "grid_hex": "7e001ffff80000060000000bc60101000d870ea3ea1fb901a4c7bf529da9826764df38dbc903591a4754ef87c1e0f83c1f08",
+      "expected_text": "Hello, Hexatess!"
+    },
+    {
+      "name": "damaged_heavy",
+      "source_case": "mid",
+      "flipped_cells_spiral_index": [
+        50,
+        80,
+        110,
+        140,
+        170,
+        200
+      ],
+      "grid_hex": "7e001ffff80000060000000e8b01023016d1af3a806da9826764de38dac92126b25a30ab6b6e8c7698f909e5e5167f58c9096586feb8384b76d2b6f3aacb2b74c0887da378d4e8edfd5842e423e0f8",
+      "expected_text": "Hexatess Code v0.1 reference vector"
+    },
+    {
+      "name": "damaged_uncorrectable",
+      "source_case": "one_byte",
+      "flipped_cells_spiral_index": [
+        10,
+        20,
+        30,
+        40,
+        50,
+        60,
+        70,
+        80
+      ],
+      "grid_hex": "7e001ffff800000600000008650000100efbe2764d0362a6de0f0780",
+      "expected_failure": true
+    },
+    {
+      "name": "plain_empty",
+      "grid_hex": "7e001ffff80000060000000821010000108f5fc7efca52dc1f0f8380",
+      "expected_text": ""
+    },
+    {
+      "name": "plain_one_byte",
+      "grid_hex": "7e001ffff800000600000008610100101effe2760d0362a6de0f0780",
+      "expected_text": "A"
+    },
+    {
+      "name": "plain_hello",
+      "grid_hex": "7e001ffff80000060000000bc60101000d870ea3ea1fb900a4c7bf529da9826764de38dbc903591a4754ef87c1e0f83c1f08",
+      "expected_text": "Hello, Hexatess!"
+    }
+  ]
+}
