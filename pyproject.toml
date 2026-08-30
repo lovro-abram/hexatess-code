@@ -38,9 +38,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/YOUR-USERNAME/hexatess-code"
-Specification = "https://github.com/YOUR-USERNAME/hexatess-code/blob/main/SPECIFICATION.md"
-Issues = "https://github.com/YOUR-USERNAME/hexatess-code/issues"
+Homepage = "https://github.com/lovro-abram/hexatess-code"
+Specification = "https://github.com/lovro-abram/hexatess-code/blob/main/SPECIFICATION.md"
+Issues = "https://github.com/lovro-abram/hexatess-code/issues"
 
 [project.scripts]
 hexatess = "hexatess.cli:main"
