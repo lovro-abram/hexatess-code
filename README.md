@@ -16,7 +16,7 @@ text, stats = decode(grid)          # ('Hello, Hexatess!', {...})
 
 ## Symbol anatomy
 
-![Symbol anatomy](docs/img/hexatess_anatomija.png)
+![Symbol anatomy](docs/img/hexatess_anatomy.png)
 
 * **A** — a real encoded symbol: hexagonal bullseye finder (rings 0–4),
   orientation key (ring 5: two dark cells), data region (rings 6…)
