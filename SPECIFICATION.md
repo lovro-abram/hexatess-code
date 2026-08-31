@@ -304,8 +304,18 @@ are a v0.2 candidate extension.
 * **Erasure decoding.** Modules occluded by a detected blob can be
   declared erasures, doubling correctable symbol counts (RS corrects
   `nsym` erasures vs `nsym/2` errors). Not part of v0.2.
-* **Camera decoding.** v0.2 defines only ideal-grid sampling; finder
-  detection and perspective correction are ecosystem work items.
+* **Camera decoding (shipped in lib v0.3.0).** The symbol format is
+  unchanged; the reference repository now ships an optional photo
+  decoder (`hexatess.camera`, the `[camera]` extra).  It locates the
+  bullseye under merged-blob and illumination hazards, fits a
+  homography on the 91 known finder cells, disambiguates the
+  canonical frame with the RS-protected header across all six
+  60-degree model rotations, refits a polynomial correction field on
+  the 171 known cells (finder + verified header), and samples with a
+  local adaptive threshold.  Note for implementers: the two-cell key
+  alone is too weak to pin the canonical frame — a conformant *photo*
+  decoder should validate the frame via the header, exactly like the
+  reference does.  Ideal-grid decoding (§8) is unaffected.
 * **Larger radii.** Extending `rmax` beyond 31 requires only widening
   the header's radius field (a breaking change).
 * **Mask quality.** The LCG mask is fast and deterministic but not

@@ -5,6 +5,31 @@ The format follows [Keep a Changelog](https://keepachangelog.com/);
 versioning follows semver. **Spec** = symbol format version,
 **lib** = reference implementation version.
 
+## [0.3.0] — 2026-08-31
+
+### Added
+- **Camera decoder** (`hexatess.camera`, optional extra `[camera]`):
+  decode symbols from real photographs — printed labels, foil
+  transparencies, screens.  Pipeline: illumination normalization,
+  blob-hypothesis finder detection, joint rotation x scale pose
+  search, homography fit on the 91 finder cells, local (adaptive)
+  threshold sampling, RS-header-judged model-frame disambiguation
+  across all six 60° rotations, a polynomial correction field fitted
+  on the 171 known cells (finder + RS-verified header), and an
+  annulus-ICP / affine fallback chain for strong perspective.
+  Dependencies (numpy, opencv-python, scipy) are optional:
+  `pip install hexatess-code[camera]`.
+- CLI subcommand `hexatess decode-photo IMAGE [IMAGE ...]`.
+- New tests: synthetic render → photo-pipeline round-trips (straight,
+  rotated 25°, mild perspective + blur).  Skipped automatically when
+  the camera extra is not installed.
+- Validated on real 12 MP photographs: upright, tilted, rotated and
+  combined variants, plus a printed transparency with curl and glare.
+
+### Fixed
+- `.github/workflows/ci.yml` trigger branch list corruption
+  (`branches: ain]` → `branches: [main]`).
+
 ## [0.2.0] — 2026-08-30
 
 ### Changed (spec 0.2) — BREAKING

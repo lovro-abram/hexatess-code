@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hexatess-code"
-version = "0.2.0"
+version = "0.3.0"
 description = "Hexatess Code - an experimental 2D barcode on a hexagonal grid with Reed-Solomon error correction"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -35,6 +35,11 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
+]
+camera = [
+    "numpy>=1.24",
+    "opencv-python>=4.8",
+    "scipy>=1.10",
 ]
 
 [project.urls]

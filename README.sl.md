@@ -51,26 +51,31 @@ besedilo, stat = decode(grid)       # ('Živjo, Hexatess!', {...})
 
 > **Stanje: eksperimentalno.** Format je mlad: specifikacija simbola in
 > referenčna implementacija sta trdni in temeljito preizkušeni (2.500+
-> testov, konformnostni vektorji), a **kamera-dekodirnik še ne obstaja**
-> — branje slik za zdaj privzame idealno, pokončno vzorčenje. Glej
-> načrt spodaj. Posvojitev mladega formata je premišljena stav;
+> testov, konformnostni vektorji).  **Kamera-dekodirnik**
+> (`hexatess.camera`, neobvezen `[camera]` dodatek) že bere simbole iz
+> pravih fotografij — natisnjenih nalepk, prosojnic, nagnjenih in
+> zasukanih posnetkov. Glej načrt spodaj. Posvojitev mladega formata
+> je premišljena stav;
 > [polna specifikacija formata](SPECIFICATION.md) je zavarovanje.
 
 ## Namestitev
 
 ```bash
 pip install hexatess-code            # iz PyPI (ko bo objavljeno)
+pip install "hexatess-code[camera]"  # + dekodiranje fotografij (numpy, opencv, scipy)
 # ali iz izvorne kode:
 pip install -e .
 ```
 
-Zahteva Python ≥ 3.8 in Pillow (samo za izris).
+Zahteva Python ≥ 3.8; Pillow za izris, numpy + OpenCV + SciPy za
+neobvezen kamera-dekodirnik.
 
 ## Ukazna vrstica
 
 ```bash
 hexatess "Živijo svet" -o koda.png --ec 30
-hexatess-code --demo        # demo simbol + statistika odpornosti
+hexatess --demo                       # demo simbol + statistika odpornosti
+hexatess decode-photo foto1.jpg foto2.jpg   # preberi simbole iz fotografij
 ```
 
 ## API
@@ -82,6 +87,7 @@ hexatess-code --demo        # demo simbol + statistika odpornosti
 | `render(mreza, pot, size_px=18, ...)` | mreža → PNG (pointy-top šestkotniki, tiho območje, supersampling) |
 | `sample_grid_from_image(pot, rmax, ...)` | idealno vzorčenje izrisanega PNG (pomožnik za samoteste) |
 | `run_tests(...)` | statistika odpornosti na šum in lake |
+| `hexatess.camera.decode_photo(pot)` | fotografija → `(besedilo, statistika)`; zaznava najditelja, korekcija perspektive, prilagodljivo vzorčenje (neobvezen `[camera]` dodatek) |
 
 `parametri` / `statistika` vsebujeta `rmax` (radij v obročih), `mask`,
 `ec`, `blocks` (seznam `(podatkovni_bajti, ecc_bajti)`) in `data_len`.
@@ -115,9 +121,11 @@ Rust/Go/JS prenese vektorje, govori Hexatess.
 
 ## Načrt
 
-1. **v0.2 — dekodiranje s kamero:** zaznavanje bullseye + korekcija
-   perspektive (ključni korak za ekosistem).
-2. **v0.2 — dekodiranje z izbrisi:** moduli pod madežem se razglasijo
+1. ~~v0.2/0.3 — dekodiranje s kamero~~ **končano (v0.3.0):**
+   `hexatess.camera` bere simbole iz fotografij — zaznavanje najditelja,
+   homografija + korekcijsko polje, prilagodljivo vzorčenje;
+   preverjeno na natisnjeni prosojnici z ukrivljenostjo in odsevi.
+2. **Dekodiranje z izbrisi:** moduli pod madežem se razglasijo
    za izbrise → podvojena zmogljivost popravka.
 3. **JavaScript/TypeScript SDK** + spletni playground (koda v brskalniku
    v 10 sekundah).

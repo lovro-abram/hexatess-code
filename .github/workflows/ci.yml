@@ -13,6 +13,10 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        include:
+          # exercise the optional camera extra on one job per minor band
+          - python-version: "3.11"
+            camera: "1"
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
@@ -23,6 +27,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .[dev]
+          if [ "${{ matrix.camera }}" = "1" ]; then
+            pip install .[camera]
+          fi
       - name: Run test suite
         run: pytest -v
       - name: Conformance vectors self-check

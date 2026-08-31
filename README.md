@@ -49,27 +49,32 @@ text, stats = decode(grid)          # ('Hello, Hexatess!', {...})
 
 > **Status: experimental.** This is a young format: the symbol
 > specification and reference implementation are solid and heavily
-> tested (2,500+ tests, conformance vectors), but there is **no camera
-> decoder yet** — reading images assumes ideal upright sampling. See
-> the roadmap below. Adopting a young format is a deliberate bet; the
-> [full format specification](SPECIFICATION.md) is the insurance.
+> tested (2,500+ tests, conformance vectors).  A **camera decoder**
+> (`hexatess.camera`, optional `[camera]` extra) already reads symbols
+> from real photographs — printed labels, foil transparencies, tilted
+> and rotated shots.  See the roadmap below.  Adopting a young format
+> is a deliberate bet; the [full format specification](SPECIFICATION.md)
+> is the insurance.
 
 ## Installation
 
 ```bash
 pip install hexatess-code            # from PyPI (once published)
+pip install "hexatess-code[camera]"  # + photo decoding (numpy, opencv, scipy)
 # or from a source checkout:
 pip install -e .
 ```
 
-Requires Python ≥ 3.8 and Pillow (for rendering only).
+Requires Python ≥ 3.8; Pillow for rendering, numpy + OpenCV + SciPy
+for the optional camera decoder.
 
 ## Command line
 
 ```bash
 hexatess "Hello world" -o koda.png --ec 30
 hexatess "Important URL https://example.org" -o url.png --ec 55
-hexatess-code --demo        # demo symbol + robustness statistics
+hexatess --demo                       # demo symbol + robustness statistics
+hexatess decode-photo photo1.jpg photo2.jpg   # read symbols from photos
 ```
 
 ## API
@@ -81,6 +86,7 @@ hexatess-code --demo        # demo symbol + robustness statistics
 | `render(grid, path, size_px=18, ...)` | grid → PNG (pointy-top hexagons, quiet zone, supersampling) |
 | `sample_grid_from_image(path, rmax, ...)` | ideal re-sampling of a rendered PNG (self-test helper) |
 | `run_tests(...)` | noise/blob robustness statistics |
+| `hexatess.camera.decode_photo(path)` | photograph → `(text, stats)`; finder detection, perspective handling, adaptive sampling (optional `[camera]` extra) |
 
 `params` / `stats` contain `rmax` (radius in rings), `mask`, `ec`,
 `blocks` (list of `(data_bytes, ecc_bytes)`) and `data_len`.
@@ -114,9 +120,11 @@ vectors, it speaks Hexatess Code.
 
 ## Roadmap
 
-1. **v0.2 — camera decoding:** bullseye detection + perspective
-   correction (the critical ecosystem step).
-2. **v0.2 — erasure decoding:** declare blob-occluded modules as
+1. ~~v0.2/0.3 — camera decoding~~ **done (v0.3.0):** `hexatess.camera`
+   reads symbols from photographs — bullseye detection, homography +
+   correction-field warp handling, adaptive sampling; validated on
+   printed foil with curl and glare.
+2. **Erasure decoding:** declare blob-occluded modules as
    erasures → doubles correctable symbol counts.
 3. **JavaScript/TypeScript SDK** + online playground (generate a code
    in the browser in 10 seconds).

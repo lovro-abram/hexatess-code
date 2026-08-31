@@ -10,11 +10,16 @@ Render a demo symbol and run robustness tests::
 
     hexatess-code --demo
     hexatess-code --test
+
+Decode a symbol from a photo (requires the [camera] extra)::
+
+    hexatess-code decode-photo photo1.jpg photo2.jpg
 """
 
 from __future__ import annotations
 
 import argparse
+import sys
 
 from .decoder import decode
 from .encoder import encode
@@ -39,7 +44,10 @@ def main(argv=None):
                     help="run robustness tests")
     ap.add_argument("--demo", action="store_true",
                     help="render a demo symbol and run robustness tests")
-    args = ap.parse_args(argv)
+    args, extra = ap.parse_known_args(argv)
+
+    if args.text == "decode-photo":
+        return _decode_photo_cli(extra)
 
     if args.test or args.demo:
         from .resilience import run_tests
@@ -59,7 +67,34 @@ def main(argv=None):
         t, _st = decode(grid2)
         print("  self-decode from image: %s"
               % ("OK" if t == text else "FAILED"))
+    return 0
+
+
+def _decode_photo_cli(paths):
+    """hexatess decode-photo IMG [IMG ...] - decode symbols from photos."""
+    if not paths:
+        print("usage: hexatess decode-photo IMAGE [IMAGE ...]",
+              file=sys.stderr)
+        return 2
+    try:
+        from .camera import decode_photo
+    except ImportError as e:
+        print("decode-photo needs the optional camera dependencies:\n"
+              "    pip install 'hexatess-code[camera]'\n(%s)" % e,
+              file=sys.stderr)
+        return 2
+    failed = 0
+    for p in paths:
+        try:
+            text, st = decode_photo(p)
+            print("%s: %r  (rings %d, EC %d%%, mask %d, %d bytes)"
+                  % (p, text, st["rmax"], st["ec"], st["mask"],
+                     st["data_len"]))
+        except Exception as e:
+            print("%s: FAILED (%s)" % (p, str(e)[:160]), file=sys.stderr)
+            failed += 1
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

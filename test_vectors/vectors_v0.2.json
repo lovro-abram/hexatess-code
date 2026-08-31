@@ -1,6 +1,6 @@
 {
   "spec_version": "0.2",
-  "generator": "hexatess-code 0.2.0",
+  "generator": "hexatess-code 0.3.0",
   "generated": "2026-08-30",
   "field": {
     "primitive_poly": "0x11D",
