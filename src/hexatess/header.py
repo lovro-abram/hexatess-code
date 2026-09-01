@@ -59,10 +59,17 @@ def bits_to_bytes(bits) -> bytes:
 #   byte 1: ec_pct/5 (5 bits)      | block_count >> 5 (3 bits)
 #   byte 2: block_count & 0x1F (5) | data_len >> 9 (3 bits)
 #   byte 3: data_len >> 1 & 0xFF (8 bits)
-#   byte 4: data_len & 1 (1 bit, leftmost) | padding 0x00 (7 bits)
+#   byte 4: data_len & 1 (1 bit)   | compressed (1 bit) | padding (6 bits)
+#
+# `compressed` (spec v0.3, byte 4 bit 6 = 0x40): 0 = payload is raw
+# UTF-8 (spec v0.2 layout), 1 = payload is a zlib stream (RFC 1950)
+# of the UTF-8 text.  `data_len` always counts the STORED bytes.
 # ----------------------------------------------------------------------
 
-def pack_mode(rmax, mask_id, ec_pct, block_count, data_len) -> bytes:
+COMPRESSED_FLAG = 0x40   # byte 4, bit 6
+
+def pack_mode(rmax, mask_id, ec_pct, block_count, data_len,
+              compressed=False) -> bytes:
     """Encode symbol parameters into a 10-byte protected mode message.
 
     The returned bytes are the 5 data bytes followed by 5 Reed-Solomon
@@ -78,6 +85,8 @@ def pack_mode(rmax, mask_id, ec_pct, block_count, data_len) -> bytes:
     b2 = ((block_count & 0x1F) << 3) | ((data_len >> 9) & 0x7)
     b3 = (data_len >> 1) & 0xFF
     b4 = (data_len & 1) << 7
+    if compressed:
+        b4 |= COMPRESSED_FLAG
     payload = bytes([b0, b1, b2, b3, b4])
     return rs_encode_msg(list(payload), MODE_ECC)
 
@@ -86,6 +95,20 @@ def unpack_mode(mode_bytes):
     """RS-correct the mode message and decode symbol parameters.
 
     Returns ``(rmax, mask_id, ec_pct, block_count, data_len)``.
+    The compression flag is ignored here (backward-compatible API);
+    use :func:`unpack_mode_ex` when it is needed.
+    """
+    rmax, mask_id, ec_pct, block_count, data_len, _c = unpack_mode_ex(
+        mode_bytes)
+    return rmax, mask_id, ec_pct, block_count, data_len
+
+
+def unpack_mode_ex(mode_bytes):
+    """Like :func:`unpack_mode` but also returns the payload mode.
+
+    Returns ``(rmax, mask_id, ec_pct, block_count, data_len,
+    compressed)`` where ``compressed`` is a bool (spec v0.3 flag;
+    always False for spec v0.2 symbols).
     """
     data = rs_correct_msg(list(mode_bytes), MODE_ECC)
     b0, b1, b2, b3, b4 = data
@@ -94,7 +117,8 @@ def unpack_mode(mode_bytes):
     ecq = b1 >> 3
     block_count = ((b1 & 0x7) << 5) | (b2 >> 3)
     data_len = ((b2 & 0x7) << 9) | (b3 << 1) | (b4 >> 7)
-    return rmax, mask_id, ecq * 5, block_count, data_len
+    compressed = bool(b4 & COMPRESSED_FLAG)
+    return rmax, mask_id, ecq * 5, block_count, data_len, compressed
 
 
 # ----------------------------------------------------------------------

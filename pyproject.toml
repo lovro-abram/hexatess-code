@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hexatess-code"
-version = "0.3.0"
+version = "0.3.1"
 description = "Hexatess Code - an experimental 2D barcode on a hexagonal grid with Reed-Solomon error correction"
 readme = "README.md"
 requires-python = ">=3.8"

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Generate / verify conformance test vectors for Hexatess Code v0.2.
+"""Generate / verify conformance test vectors for Hexatess Code v0.3.
 
-The committed file ``vectors_v0.2.json`` lets independent implementations
-(any language) verify conformance to specification v0.2:
+The committed file ``vectors_v0.3.json`` lets independent implementations
+(any language) verify conformance to specification v0.3:
 
 * ``encode_vectors`` -- fixed inputs (text, ec_pct) with the expected
   symbol parameters, protected mode message and the full canonical grid
@@ -41,24 +41,38 @@ from hexatess import (                      # noqa: E402
 )
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-VECTOR_FILE = os.path.join(HERE, "vectors_v0.2.json")
+VECTOR_FILE = os.path.join(HERE, "vectors_v0.3.json")
 
-GENERATED = "2026-08-30"
+GENERATED = "2026-09-01"
 
-# (name, text, ec_pct) ---------------------------------------------------
+
+def _incompressible(n):
+    """Deterministic, aperiodic, effectively incompressible ASCII text."""
+    return "".join(chr(33 + hashlib.sha256(str(i).encode()).digest()[0] % 94)
+                   for i in range(n))
+
+
+_LOREM = ("Hexatess Code je eksperimentalna dvodimenzionalna koda na "
+          "sestkotni mrezi: sestkotni iskalnik, orientacijski obroc, "
+          "spiralna serializacija in Reed-Solomon popravki napak. "
+          "Ker so moduli sestkotniki, je gostota informacij visja kot "
+          "pri kvadratnih mrezah, simbol pa je blizu izotropen. " * 3)
+
+# (name, text, ec_pct, compress) -----------------------------------------
 ENCODE_CASES = [
-    ("empty", "", 5),
-    ("one_byte", "A", 5),
-    ("hello", "Hello, Hexatess!", 30),
-    ("utf8_slo", "ŠČŽ življenje je kodiranje", 30),
-    ("utf8_emoji", "bee \U0001F41D hive", 50),
-    ("mid", "Hexatess Code v0.2 reference vector", 55),
-    ("digits", "1234567890" * 8, 10),
-    ("url", "https://example.org/hexatess", 25),
-    ("min_ec", "compact", 5),
-    ("max_ec", "resilience", 90),
-    ("long_multiblock", "X" * 250, 30),
-    ("max_capacity", "X" * 329, 5),
+    ("empty", "", 5, "auto"),
+    ("one_byte", "A", 5, "auto"),
+    ("hello", "Hello, Hexatess!", 30, "auto"),
+    ("utf8_slo", "ŠČŽ življenje je kodiranje", 30, "auto"),
+    ("utf8_emoji", "bee \U0001F41D hive", 50, "auto"),
+    ("mid", "Hexatess Code v0.2 reference vector", 55, "auto"),
+    ("digits", "1234567890" * 8, 10, "auto"),
+    ("url", "https://example.org/hexatess", 25, "auto"),
+    ("min_ec", "compact", 5, "auto"),
+    ("max_ec", "resilience", 90, "auto"),
+    ("long_multiblock", "X" * 250, 30, "auto"),
+    ("max_capacity", _incompressible(329), 5, False),
+    ("long_text_zlib", _LOREM, 30, "auto"),
 ]
 
 # (name, encode-case, [(spiral_index, xor_value), ...]) -------------------
@@ -67,7 +81,7 @@ DAMAGE_CASES = [
     # 3 flips on a 17-byte payload with 6 ECC symbols (capacity 3)
     ("damaged_correctable", "hello",
      [(100, 0xFF), (140, 0x5A), (180, 0xA5)]),
-    # 6 flips on 33-byte payload with 19 ECC symbols (capacity 9)
+    # 6 flips on 35-byte payload with 19 ECC symbols (capacity 9)
     ("damaged_heavy", "mid",
      [(50, 0x01), (80, 0x7F), (110, 0x80), (140, 0xFF),
       (170, 0x33), (200, 0xCC)]),
@@ -128,21 +142,23 @@ def flip_cells(grid, rmax, flips):
 def build_vectors():
     encode_vectors = []
     grids = {}
-    for name, text, ec in ENCODE_CASES:
-        grid, p = encode(text, ec_pct=ec)
+    for name, text, ec, comp in ENCODE_CASES:
+        grid, p = encode(text, ec_pct=ec, compress=comp)
         assert decode(grid)[0] == text
         mode_hex = "".join("")  # placeholder, filled below
         from hexatess import pack_mode
         mode_hex = bytes(pack_mode(p["rmax"], p["mask"], p["ec"],
-                                   len(p["blocks"]),
-                                   p["data_len"])).hex()
+                                   len(p["blocks"]), p["data_len"],
+                                   compressed=p["compressed"])).hex()
         gh = canonical_hex(grid, p["rmax"])
         grids[name] = (grid, p)
         encode_vectors.append({
             "name": name,
             "text": text,
             "ec_pct": ec,
+            "compress_mode": comp,
             "data_len": p["data_len"],
+            "compressed": p["compressed"],
             "rmax": p["rmax"],
             "mask": p["mask"],
             "blocks": [list(b) for b in p["blocks"]],
@@ -194,7 +210,7 @@ def build_vectors():
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--write", action="store_true",
-                    help="write vectors_v0.2.json")
+                    help="write vectors_v0.3.json")
     ap.add_argument("--verify", action="store_true",
                     help="verify committed vectors against the library")
     args = ap.parse_args(argv)

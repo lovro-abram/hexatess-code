@@ -53,9 +53,11 @@ besedilo, stat = decode(grid)       # ('Živjo, Hexatess!', {...})
 > referenčna implementacija sta trdni in temeljito preizkušeni (2.500+
 > testov, konformnostni vektorji).  **Kamera-dekodirnik**
 > (`hexatess.camera`, neobvezen `[camera]` dodatek) že bere simbole iz
-> pravih fotografij — natisnjenih nalepk, prosojnic, nagnjenih in
-> zasukanih posnetkov. Glej načrt spodaj. Posvojitev mladega formata
-> je premišljena stav;
+> pravih fotografij v približno sekundi — natisnjenih nalepek,
+> prosojnic, nagnjenih in zasukanih posnetkov. Od specifikacije v0.3
+> se vnos samodejno zlib-stisne, zato dolga besedila
+> zasedejo precej manjše simbole. Glej načrt spodaj. Posvojitev
+> mladega formata je premišljena stav;
 > [polna specifikacija formata](SPECIFICATION.md) je zavarovanje.
 
 ## Namestitev
@@ -78,19 +80,43 @@ hexatess --demo                       # demo simbol + statistika odpornosti
 hexatess decode-photo foto1.jpg foto2.jpg   # preberi simbole iz fotografij
 ```
 
+Vnos se samodejno zlib-stisne, kadar to prihrani prostor
+(`--no-compress` to izklopi; zastavica v glavi zagotavlja polno
+združljivost nazaj).
+
+## Stiskanje vsebine (spec v0.3)
+
+En bit v glavi označi vsebino kot zlib-zaporedje. Kodirnik ga uporabi
+samo, kadar res pomaga, dekodirniki pa razpenjajo prozorno — simboli
+brez zastavice so bajtno identični v0.2. V praksi (EC 30, razen kjer
+je navedeno):
+
+| vsebina | surovo | shranjeno | simbol |
+|---|---|---|---|
+| 80 številk | 80 B | 21 B | rmax 17 → 11 |
+| `"X" × 250` | 250 B | 12 B | rmax 30 → 10 |
+| 849-bajtni slovenski odstavek | 849 B | 203 B | ne bi šel noter → rmax 28 |
+| kratki nizi (≤ ~30 B) | — | nespremenjeno | odglava zmaga |
+
+Največja *shranjena* kapaciteta je nespremenjena (329 bajtov pri EC 5),
+zato se nestisljivi podatki obnašajo tako kot prej.
+
 ## API
 
 | Funkcija | Opis |
 |---|---|
-| `encode(besedilo, ec_pct=30, mask_id="auto", min_rings=None)` | UTF-8 besedilo → `(mreza, parametri)`; mreža preslika aksialne `(q, r)` v `0/1` |
-| `decode(mreza)` | mreža → `(besedilo, statistika)`; RS popravek je prozoren |
+| `encode(besedilo, ec_pct=30, mask_id="auto", min_rings=None, compress="auto")` | UTF-8 besedilo → `(mreza, parametri)`; mreža preslika aksialne `(q, r)` v `0/1` |
+| `decode(mreza)` | mreža → `(besedilo, statistika)`; RS popravek in razpenjanje sta prozorna |
 | `render(mreza, pot, size_px=18, ...)` | mreža → PNG (pointy-top šestkotniki, tiho območje, supersampling) |
 | `sample_grid_from_image(pot, rmax, ...)` | idealno vzorčenje izrisanega PNG (pomožnik za samoteste) |
 | `run_tests(...)` | statistika odpornosti na šum in lake |
 | `hexatess.camera.decode_photo(pot)` | fotografija → `(besedilo, statistika)`; zaznava najditelja, korekcija perspektive, prilagodljivo vzorčenje (neobvezen `[camera]` dodatek) |
 
 `parametri` / `statistika` vsebujeta `rmax` (radij v obročih), `mask`,
-`ec`, `blocks` (seznam `(podatkovni_bajti, ecc_bajti)`) in `data_len`.
+`ec`, `blocks` (seznam `(podatkovni_bajti, ecc_bajti)`), `data_len`
+(shranjena dolžina) in `compressed`; `statistika` poroča še
+`repair_bits` (knjiga RS popravkov), pri kameri pa `sector` in
+`finder_hits`.
 
 ## Proračun za popravo napak
 
@@ -114,7 +140,7 @@ celih bajtov.
 Format je namenoma **specifikacija-na-prvem-mestu**: vse, kar potrebujete
 za neodvisno implementacijo, je v [`SPECIFICATION.md`](SPECIFICATION.md),
 datoteka
-[`test_vectors/vectors_v0.2.json`](test_vectors/vectors_v0.2.json)
+[`test_vectors/vectors_v0.3.json`](test_vectors/vectors_v0.3.json)
 pa vsebuje fiksne vhode/izhode (mreže, glave, poškodovane simbole,
 pričakovane rezultate) za preverjanje skladnosti. Če vaš dekodirnik v
 Rust/Go/JS prenese vektorje, govori Hexatess.
@@ -125,11 +151,17 @@ Rust/Go/JS prenese vektorje, govori Hexatess.
    `hexatess.camera` bere simbole iz fotografij — zaznavanje najditelja,
    homografija + korekcijsko polje, prilagodljivo vzorčenje;
    preverjeno na natisnjeni prosojnici z ukrivljenostjo in odsevi.
-2. **Dekodiranje z izbrisi:** moduli pod madežem se razglasijo
+   **v0.3.1:** ≈10× hitreje (tipična 12 MP fotografija ~1 s) ter
+   stabilno vzorčenje zunanjih obročev in izbira poze, odporna na
+   napačno dekodiranje.
+2. ~~v0.3 — stiskanje vsebine~~ **končano (v0.3.1):** zlib zastavica v
+   glavi, samodejno, kadar pomaga.
+3. **Dekodiranje z izbrisi:** moduli pod madežem se razglasijo
    za izbrise → podvojena zmogljivost popravka.
-3. **JavaScript/TypeScript SDK** + spletni playground (koda v brskalniku
+4. **JavaScript/TypeScript SDK** + spletni playground (koda v brskalniku
    v 10 sekundah).
-4. Večji radiji / kapaciteta nad 329 bajti (nezdružljiva sprememba glave).
+5. Večji radiji / kapaciteta nad 329 shranjenimi bajti (nezdružljiva
+   sprememba glave).
 
 Prispevki so dobrodošli — glej [CONTRIBUTING.md](CONTRIBUTING.md).
 

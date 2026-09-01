@@ -37,7 +37,12 @@ def test_roundtrip(text, ec):
     grid, params = encode(text, ec_pct=ec)
     out, stats = decode(grid)
     assert out == text
-    assert stats["data_len"] == len(text.encode("utf-8"))
+    # data_len counts the STORED bytes (zlib stream when compressed)
+    assert stats["data_len"] == params["data_len"]
+    if params["compressed"]:
+        assert params["data_len"] < len(text.encode("utf-8"))
+    else:
+        assert params["data_len"] == len(text.encode("utf-8"))
     assert stats["ec"] == ec
 
 
@@ -145,3 +150,69 @@ def test_decode_empty_payload():
     grid, _ = encode("", ec_pct=5)
     out, stats = decode(grid)
     assert out == "" and stats["data_len"] == 0
+
+
+# ------------------------------------------------- payload compression v0.3
+
+def test_auto_compression_off_for_short_text():
+    grid, p = encode("Hello, Hexatess!", ec_pct=30)
+    assert p["compressed"] is False
+
+
+def test_auto_compression_on_for_repetitive_text():
+    grid, p = encode("1234567890" * 8, ec_pct=10)
+    assert p["compressed"] is True
+    assert p["data_len"] < 80
+    text, st = decode(grid)
+    assert text == "1234567890" * 8
+    assert st["compressed"] is True
+
+
+def test_compress_false_matches_v02_layout():
+    # flag bit unset and padding zero -> byte-identical to spec v0.2
+    grid, p = encode("X" * 250, ec_pct=30, compress=False)
+    assert p["compressed"] is False
+    assert p["data_len"] == 250
+    text, st = decode(grid)
+    assert text == "X" * 250 and st["compressed"] is False
+
+
+def test_forced_compression_on_short_text():
+    grid, p = encode("A", compress=True)
+    assert p["compressed"] is True
+    assert p["data_len"] > 1              # stream overhead, still decodes
+    text, st = decode(grid)
+    assert text == "A" and st["compressed"] is True
+
+
+def test_compression_reported_in_stats():
+    grid, p = encode("Hexatess " * 40, ec_pct=30)
+    text, st = decode(grid)
+    assert text == "Hexatess " * 40
+    assert st["compressed"] == p["compressed"] is True
+    assert isinstance(st["repair_bits"], int) and st["repair_bits"] == 0
+
+
+def test_damaged_compressed_payload_survives():
+    rng = random.Random(11)
+    text = "1234567890" * 8
+    grid, p = encode(text, ec_pct=55)
+    assert p["compressed"] is True
+    cells = [c for k in range(DATA_RING0, p["rmax"] + 1)
+             for c in hex_ring(k)]
+    ok = 0
+    for _ in range(20):
+        g2 = dict(grid)
+        for c in rng.sample(cells, 5):
+            g2[c] ^= 1
+        try:
+            t2, _ = decode(g2)
+            ok += (t2 == text)
+        except (ValueError, UnicodeDecodeError):
+            pass
+    assert ok >= 15, "compressed payload survival unexpectedly low"
+
+
+def test_invalid_compress_argument():
+    with pytest.raises(ValueError):
+        encode("x", compress="maybe")

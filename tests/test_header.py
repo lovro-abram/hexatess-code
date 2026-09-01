@@ -3,6 +3,7 @@
 import pytest
 
 from hexatess.header import (
+    COMPRESSED_FLAG,
     MODE_BITS,
     MODE_ECC,
     MODE_BYTES,
@@ -11,6 +12,7 @@ from hexatess.header import (
     pack_mode,
     plan_blocks,
     unpack_mode,
+    unpack_mode_ex,
 )
 from hexatess.reedsolomon import rs_calc_syndromes
 
@@ -37,6 +39,36 @@ def test_pack_unpack_roundtrip(rmax, mask, ec, bc, dl):
     mode = pack_mode(rmax, mask, ec, bc, dl)
     assert len(mode) == 10
     assert unpack_mode(mode) == (rmax, mask, ec, bc, dl)
+    assert unpack_mode_ex(mode) == (rmax, mask, ec, bc, dl, False)
+
+
+# ---------------------------------------------------------------- v0.3
+# compression flag (byte 4, bit 6)
+
+def test_compressed_flag_roundtrip():
+    mode = pack_mode(13, 5, 30, 1, 203, compressed=True)
+    assert mode[4] & COMPRESSED_FLAG
+    assert unpack_mode_ex(mode) == (13, 5, 30, 1, 203, True)
+    # legacy 5-tuple view ignores the flag
+    assert unpack_mode(mode) == (13, 5, 30, 1, 203)
+
+
+def test_uncompressed_padding_zero():
+    assert pack_mode(31, 7, 90, 255, 4094)[4] == 0x00
+    assert pack_mode(31, 7, 90, 255, 4095)[4] == 0x80
+
+
+def test_compressed_padding_zero():
+    assert pack_mode(10, 0, 5, 1, 0, compressed=True)[4] == COMPRESSED_FLAG
+    assert pack_mode(10, 0, 5, 1, 1, compressed=True)[4] \
+        == 0x80 | COMPRESSED_FLAG
+
+
+def test_v02_symbol_is_valid_v03():
+    # a v0.2 header (zero padding) must read as uncompressed in v0.3
+    for dl in (0, 1, 17, 4095):
+        mode = pack_mode(9, 2, 30, 1, dl)
+        assert unpack_mode_ex(mode)[5] is False
 
 
 def test_mode_has_clean_syndromes():

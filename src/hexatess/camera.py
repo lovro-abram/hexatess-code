@@ -46,6 +46,7 @@ from __future__ import annotations
 
 import math
 import os
+import time
 from itertools import combinations
 
 try:
@@ -60,10 +61,10 @@ except ImportError as _exc:  # pragma: no cover - depends on env
         "(numpy, opencv-python, scipy)"
     ) from _exc
 
-from .decoder import decode
-from .geometry import hex_to_pixel, hex_ring
+from .decoder import decode, payload_to_text
+from .geometry import hex_to_pixel, hex_ring, ring_capacity
 from .header import DATA_RING0, MAX_RINGS, MODE_BITS, bits_to_bytes, \
-    plan_blocks, unpack_mode
+    plan_blocks, unpack_mode_ex
 from .masks import mask_bit
 from .reedsolomon import rs_correct_msg
 
@@ -97,13 +98,27 @@ def _load_gray(path, max_dim=2400):
 
 
 def _prepare(img, max_dim=2400):
-    """Normalize illumination; return (blurred, norm8, darkmask, otsu)."""
+    """Normalize illumination; return (blurred, norm8, darkmask).
+
+    The illumination gradient is estimated as a very-low-frequency
+    background.  A full-resolution Gaussian with sigma ~= max_dim/8
+    needs a ~1800-tap kernel on a 2400 px image and alone costs 20 s
+    on a 12 MP photo (85%% of the whole scan in v0.3.0), so the
+    background is computed at 1/8 resolution and upsampled -- the
+    result differs from the exact blur by at most ~2/255 per pixel,
+    which the pose-selection logic tolerates (runner-up poses are
+    tried and ranked by correction cost).
+    """
     if max(img.shape) > max_dim:
         f = max_dim / max(img.shape)
         img = cv2.resize(img, None, fx=f, fy=f,
                          interpolation=cv2.INTER_AREA)
     img = cv2.GaussianBlur(img, (3, 3), 0)
-    bg = cv2.GaussianBlur(img, (0, 0), max_dim / 8.0)
+    h, w = img.shape
+    sw, sh = max(1, w // 8), max(1, h // 8)
+    small = cv2.resize(img, (sw, sh), interpolation=cv2.INTER_AREA)
+    small = cv2.GaussianBlur(small, (0, 0), max_dim / 8.0 / 8.0)
+    bg = cv2.resize(small, (w, h), interpolation=cv2.INTER_LINEAR)
     norm = img.astype(np.float32) / np.maximum(bg, 1.0)
     n8 = np.clip(norm * 200.0, 0, 255).astype(np.uint8)
     _, dark = cv2.threshold(n8, 0, 255,
@@ -193,72 +208,182 @@ def _margin_at(gray, ii, pts, thr, half):
 def _finder_count(am, ii_am, warp, half):
     """Number of correctly read finder cells (0-91) under a warp."""
     H, W = am.shape
-    hits = 0
-    for (q, r), bexp in zip(_ALL_FINDER, _ALL_EXP):
-        u, v = warp(*hex_to_pixel(q, r, 1.0))
-        xi, yi = int(round(u)), int(round(v))
-        if 0 <= xi < W and 0 <= yi < H:
-            val = _box_mean(am, ii_am, np.array([xi]), np.array([yi]),
-                            half)[0]
-            hits += int((1 if val > 127.5 else 0) == bexp)
-    return hits
+    x, y = warp(_FU, _FV)
+    xi = np.rint(x).astype(int)
+    yi = np.rint(y).astype(int)
+    ok = (xi >= 0) & (xi < W) & (yi >= 0) & (yi < H)
+    vals = np.zeros(len(_FU), dtype=np.float32)
+    vals[ok] = _box_mean(am, ii_am, xi[ok], yi[ok], half)
+    read = np.where(ok, (vals > 127.5).astype(int), -1)
+    return int((read == _ALL_EXP).sum())
 
 
 def find_bullseye(n8, dark, top=4):
-    """Score blobs under several merged-blob size hypotheses."""
-    scored = []
-    for (cx, cy, area) in _blob_candidates(dark):
-        best = (-1e9, cx, cy, area)
-        for n in _BLOB_HYPOTHESES:
-            s0 = math.sqrt(area / (2.598 * n))
-            if not (1.2 <= s0 <= 80):
-                continue
-            for f in np.linspace(0.85, 1.2, 8):
-                sc = s0 * f
-                for dx in (-2, 0, 2):
-                    for dy in (-2, 0, 2):
-                        m = _ring_means(n8, cx + dx, cy + dy, sc)
-                        v = _profile_score(m)
-                        if v > best[0]:
-                            best = (v, cx + dx, cy + dy, sc)
-        scored.append(best)
-    scored.sort(reverse=True)
+    """Score blobs under several merged-blob size hypotheses.
+
+    Vectorized over all (blob x size-hypothesis x scale-factor x
+    offset) configurations; produces the same top list as the
+    original per-blob search (verified identical on test photos).
+    """
+    blobs = _blob_candidates(dark)
+    if not blobs:
+        return []
+    H, W = n8.shape
+    th = np.linspace(0, 2 * np.pi, 60, endpoint=False)
+    ct, st_ = np.cos(th), np.sin(th)
+    Rk = 1.5 * np.arange(6, dtype=np.float64)
+    B = len(blobs)
+    CX = np.array([b[0] for b in blobs], dtype=np.float64)
+    CY = np.array([b[1] for b in blobs], dtype=np.float64)
+    AR = np.array([b[2] for b in blobs], dtype=np.float64)
+    hyp = np.asarray(_BLOB_HYPOTHESES, dtype=np.float64)
+    s0 = np.sqrt(AR[:, None] / (2.598 * hyp[None, :]))
+    valid = (s0 >= 1.2) & (s0 <= 80)
+    fs = np.linspace(0.85, 1.2, 8)
+    offs = np.array([-2., 0., 2.])
+    NH = len(_BLOB_HYPOTHESES)
+    bi = np.arange(B)[:, None, None, None, None]
+    hi = np.arange(NH)[None, :, None, None, None]
+    fi = np.arange(8)[None, None, :, None, None]
+    xi_ = np.arange(3)[None, None, None, :, None]
+    yi_ = np.arange(3)[None, None, None, None, :]
+    full = (B, NH, 8, 3, 3)
+    sc = np.broadcast_to(s0[bi, hi] * fs[fi], full)
+    keep = np.broadcast_to(valid[bi, hi], full)
+    fb = np.broadcast_to(bi, full).ravel()[keep.ravel()]
+    fsc = sc.ravel()[keep.ravel()]
+    fcx = np.broadcast_to(CX[bi] + offs[xi_], full).ravel()[keep.ravel()]
+    fcy = np.broadcast_to(CY[bi] + offs[yi_], full).ravel()[keep.ravel()]
+    C = len(fb)
+    best = np.full(B, -1e18)
+    bestk = np.zeros((B, 3))
+    CH = max(1, int(2_000_000 // 360))
+    for a in range(0, C, CH):
+        s_c = fsc[a:a + CH, None, None]
+        x = fcx[a:a + CH, None, None] + Rk[None, :, None] * s_c * ct
+        y = fcy[a:a + CH, None, None] + Rk[None, :, None] * s_c * st_
+        xii = np.clip(np.rint(x).astype(np.int64), 0, W - 1)
+        yii = np.clip(np.rint(y).astype(np.int64), 0, H - 1)
+        m = n8[yii, xii].mean(-1)
+        score = (m[:, 1] + m[:, 3] + 0.4 * m[:, 5]
+                 - m[:, 0] - m[:, 2] - m[:, 4])
+        bidx = fb[a:a + CH]
+        # fancy indexing with duplicates is "last wins": take the
+        # per-blob group maximum inside the chunk (lexsort), then
+        # merge chunk results into the global best
+        o2 = np.lexsort((score, bidx))
+        b_s = bidx[o2]
+        s_s = score[o2]
+        lastm = np.empty(len(b_s), dtype=bool)
+        lastm[:-1] = b_s[1:] != b_s[:-1]
+        lastm[-1] = True
+        bb = b_s[lastm]
+        vals = s_s[lastm]
+        imp = vals > best[bb]
+        if imp.any():
+            bbi = bb[imp]
+            best[bbi] = vals[imp]
+            bestk[bbi, 0] = fcx[a:a + CH][o2][lastm][imp]
+            bestk[bbi, 1] = fcy[a:a + CH][o2][lastm][imp]
+            bestk[bbi, 2] = fsc[a:a + CH][o2][lastm][imp]
+    order = np.argsort(-best)
     kept = []
-    for v, cx, cy, s in scored:
-        if all(math.hypot(cx - kx, cy - ky) > 3 * ks
+    for b in order:
+        if best[b] <= -1e17:
+            break
+        cxb, cyb, scb = bestk[b]
+        if all(math.hypot(cxb - kx, cyb - ky) > 3 * ks
                for _, kx, ky, ks in kept):
-            kept.append((v, cx, cy, s))
+            kept.append((float(best[b]), float(cxb), float(cyb),
+                         float(scb)))
         if len(kept) >= top:
             break
     return kept
 
 
-def refine_pose(n8, ii, cx0, cy0, s0, half):
-    """Joint rotation x scale sweep + local polish (similarity pose)."""
+# model-frame unit-scale coordinates of the 91 finder cells (rings 0-5)
+_FINDER_UV = np.array([hex_to_pixel(q, r, 1.0) for (q, r) in _ALL_FINDER])
+_FU, _FV = _FINDER_UV[:, 0], _FINDER_UV[:, 1]
+
+
+def _pose_margins(n8, ii, cxs, cys, ss, phis, thr_m, half):
+    """Signed margin sum of every pose against the finder expectation.
+
+    ``cxs/cys/ss/phis`` are equal-length 1-D arrays; returns one margin
+    per pose (vectorized equivalent of the original per-config loop).
+    """
+    c = np.cos(phis)[:, None]
+    sn = np.sin(phis)[:, None]
+    us = ss[:, None] * _FU[None, :]
+    vs = ss[:, None] * _FV[None, :]
+    xs = cxs[:, None] + us * c - vs * sn
+    ys = cys[:, None] + us * sn + vs * c
+    xii = xs.round().astype(int)
+    yii = ys.round().astype(int)
+    H, W = n8.shape
+    ok = (xii >= 0) & (xii < W) & (yii >= 0) & (yii < H)
+    vals = np.full(xs.shape, 255.0, dtype=np.float32)
+    if ok.any():
+        vals[ok] = _box_mean(n8, ii, xii[ok], yii[ok], half)
+    m = np.where(_ALL_EXP[None, :] == 1, thr_m - vals, vals - thr_m)
+    return m.sum(1)
+
+
+def _ang_diff(a, b):
+    d = abs(a - b) % (2 * math.pi)
+    return min(d, 2 * math.pi - d)
+
+
+def _polish_pose(n8, ii, cx, cy, s, phi, thr_m, half):
+    """Local polish sweep around a seed pose (same grid as v0.3.0)."""
+    fs2 = np.linspace(0.95, 1.05, 11)
+    dfs = np.deg2rad(np.arange(-4, 4.5, 0.5))
+    o5 = np.array([-1., -0.5, 0., 0.5, 1.])
+    P = np.array(np.meshgrid(fs2, dfs, o5, o5, indexing='ij'))
+    P = P.reshape(4, -1).T
+    mg = _pose_margins(n8, ii, cx + P[:, 2], cy + P[:, 3],
+                       s * P[:, 0], phi + P[:, 1], thr_m, half)
+    j = int(np.argmax(mg))
+    return (float(mg[j]), float(cx + P[j, 2]), float(cy + P[j, 3]),
+            float(s * P[j, 0]), float(phi + P[j, 1]))
+
+
+def refine_pose(n8, ii, cx0, cy0, s0, half, want=3):
+    """Joint rotation x scale sweep + local polish (similarity pose).
+
+    Returns up to ``want`` distinct polished poses as
+    ``[(margin, cx, cy, s, phi), ...]`` sorted by descending margin.
+    The first entry equals the single-pose result of v0.3.0; the
+    runner-ups protect against near-tie flips of the argmax (they are
+    resolved downstream by the RS-judged, correction-cost-ranked
+    decode).
+    """
     thr_m = float(np.median(n8))
-    best = (-1e18, cx0, cy0, s0, 0.0)
-    for phideg in range(0, 360, 8):
-        phi = math.radians(phideg)
-        for f in np.linspace(0.80, 1.25, 10):
-            s = s0 * f
-            for dx in (-2, 0, 2):
-                for dy in (-2, 0, 2):
-                    pts = _finder_positions(cx0 + dx, cy0 + dy, s, phi)
-                    mg = _margin_at(n8, ii, pts, thr_m, half)
-                    if mg > best[0]:
-                        best = (mg, cx0 + dx, cy0 + dy, s, phi)
-    _, cx, cy, s, phi = best
-    for f in np.linspace(0.95, 1.05, 11):
-        s2 = s * f
-        for dphi in np.deg2rad(np.arange(-4, 4.5, 0.5)):
-            for dx in (-1, -0.5, 0, 0.5, 1):
-                for dy in (-1, -0.5, 0, 0.5, 1):
-                    pts = _finder_positions(cx + dx, cy + dy, s2,
-                                            phi + dphi)
-                    mg = _margin_at(n8, ii, pts, thr_m, half)
-                    if mg > best[0]:
-                        best = (mg, cx + dx, cy + dy, s2, phi + dphi)
-    return best[1:]
+    phis = np.radians(np.arange(0, 360, 8, dtype=np.float64))
+    fs = np.linspace(0.80, 1.25, 10)
+    offs = np.array([-2., 0., 2.])
+    P1 = np.array(np.meshgrid(phis, fs, offs, offs, indexing='ij'))
+    P1 = P1.reshape(4, -1).T
+    mg1 = _pose_margins(n8, ii, cx0 + P1[:, 2], cy0 + P1[:, 3],
+                        s0 * P1[:, 1], P1[:, 0], thr_m, half)
+    poses = []
+    for j in np.argsort(-mg1)[:6]:
+        pose = _polish_pose(n8, ii, cx0 + P1[j, 2], cy0 + P1[j, 3],
+                            s0 * P1[j, 1], P1[j, 0], thr_m, half)
+        # skip seeds whose polish converged to an already-found pose
+        dup = False
+        for _mgp, cx_p, cy_p, s_p, phi_p in poses:
+            if (math.hypot(pose[1] - cx_p, pose[2] - cy_p) < 2.0
+                    and abs(pose[3] - s_p) < 0.03 * s0
+                    and _ang_diff(pose[4], phi_p) < math.radians(6)):
+                dup = True
+                break
+        if not dup:
+            poses.append(pose)
+        if len(poses) >= want:
+            break
+    poses.sort(key=lambda t: -t[0])
+    return poses
 
 
 def homo_finder_fit(n8, ii, cx, cy, s, phi, thr, half):
@@ -291,8 +416,16 @@ def homo_finder_fit(n8, ii, cx, cy, s, phi, thr, half):
                    [res.x[6], res.x[7], 1.0]])
 
     def warp(u, v):
-        q = Hm @ np.array([u, v, 1.0])
-        return float(q[0] / q[2]), float(q[1] / q[2])
+        scalar = np.ndim(u) == 0 and np.ndim(v) == 0
+        u = np.atleast_1d(np.asarray(u, dtype=np.float64))
+        v = np.atleast_1d(np.asarray(v, dtype=np.float64))
+        px = Hm[0, 0] * u + Hm[0, 1] * v + Hm[0, 2]
+        py = Hm[1, 0] * u + Hm[1, 1] * v + Hm[1, 2]
+        pz = Hm[2, 0] * u + Hm[2, 1] * v + Hm[2, 2]
+        x, y = px / pz, py / pz
+        if scalar:
+            return float(x[0]), float(y[0])
+        return x, y
 
     return warp
 
@@ -306,14 +439,14 @@ def _unpack_header(bits80, max_flips=2):
     positive rate), which makes it safe as a geometry judge.
     """
     try:
-        return unpack_mode(bits_to_bytes(bits80)), list(bits80)
+        return unpack_mode_ex(bits_to_bytes(bits80)), list(bits80)
     except Exception:
         pass
     for i in range(80):
         b2 = list(bits80)
         b2[i] ^= 1
         try:
-            return unpack_mode(bits_to_bytes(b2)), b2
+            return unpack_mode_ex(bits_to_bytes(b2)), b2
         except Exception:
             continue
     if max_flips >= 2:
@@ -322,7 +455,7 @@ def _unpack_header(bits80, max_flips=2):
             b2[i] ^= 1
             b2[j] ^= 1
             try:
-                return unpack_mode(bits_to_bytes(b2)), b2
+                return unpack_mode_ex(bits_to_bytes(b2)), b2
             except Exception:
                 continue
     return None, None
@@ -354,6 +487,51 @@ def _remap_grid(grid, m, rmax):
         for i, c in enumerate(ring):
             out[c] = grid.get(ring[(i + sh) % n], 0)
     return out
+
+
+# precomputed per-sector header cells, known-cell sets and their
+# model-frame unit-scale coordinates
+_SECTOR_CELLS = [_header_cells(m) for m in range(6)]
+_SECTOR_UV = [np.array([hex_to_pixel(q, r, 1.0) for (q, r) in hc])
+              for hc in _SECTOR_CELLS]
+_KNOWN_CELLS = [list(_ALL_FINDER) + hc for hc in _SECTOR_CELLS]
+_KNOWN_UV = [np.array([hex_to_pixel(q, r, 1.0) for (q, r) in kc])
+             for kc in _KNOWN_CELLS]
+
+
+def _padding_anchors(rmax_m, ec_pct, data_len, mask_id, m):
+    """Free geometric anchors from the tail padding (spec §3).
+
+    Unused tail cells of the data region carry an alternating 0,1,0,1…
+    pattern (masked like the rest of the payload), which the header
+    (once RS-verified) pins down exactly.  These cells sit at the
+    OUTER edge of the symbol -- precisely where the polynomial
+    correction field would otherwise be pure extrapolation -- so they
+    stabilise the sampling of the largest rings.
+
+    Returns ``(cells, stored_bits)`` in the m-rotated model frame.
+    """
+    total = (data_len + sum(e for _, e in plan_blocks(data_len,
+                                                      ec_pct))) * 8
+    cap = ring_capacity(DATA_RING0, rmax_m)
+    pad = cap - MODE_BITS - total
+    if pad <= 0:
+        return [], []
+    first = MODE_BITS + total          # spiral index of first pad cell
+    cells = []
+    bits = []
+    idx = 0
+    for k in range(DATA_RING0, rmax_m + 1):
+        ring = list(hex_ring(k))
+        n = len(ring)
+        sh = (k * m) % n
+        for i in range(n):
+            if idx >= first:
+                cells.append(ring[(i + sh) % n])
+                bit = (idx - first) % 2
+                bits.append(bit ^ mask_bit(idx - MODE_BITS, mask_id))
+            idx += 1
+    return cells, bits
 
 
 # ------------------------------------------------- correction field (CD)
@@ -409,44 +587,63 @@ def _coord_descent(am, ii_am, W, H, half, base_pts, F, EXP, delta0,
 
 def _make_warp(warp0, delta):
     def warp(u, v):
+        scalar = np.ndim(u) == 0 and np.ndim(v) == 0
+        u = np.atleast_1d(np.asarray(u, dtype=np.float64))
+        v = np.atleast_1d(np.asarray(v, dtype=np.float64))
         x0, y0 = warp0(u, v)
-        a = np.array([1.0, u / 10.0, v / 10.0, (u / 10.0) ** 2,
-                      (u / 10.0) * (v / 10.0), (v / 10.0) ** 2])
-        return x0 + a @ delta[:6], y0 + a @ delta[6:]
+        a = np.stack([np.ones_like(u), u / 10.0, v / 10.0,
+                      (u / 10.0) ** 2, (u / 10.0) * (v / 10.0),
+                      (v / 10.0) ** 2])
+        x = x0 + a.T @ delta[:6]
+        y = y0 + a.T @ delta[6:]
+        if scalar:
+            return float(x[0]), float(y[0])
+        return x, y
     return warp
 
 
 # -------------------------------------------------------------- sampling
+_UV_CACHE = {}
+
+
+def _model_uv(rmax):
+    """Model-frame unit-scale coordinates of all cells r = 0..rmax."""
+    uv = _UV_CACHE.get(rmax)
+    if uv is None:
+        keys = [(q, r) for k in range(rmax + 1)
+                for (q, r) in hex_ring(k)]
+        uv = (keys, np.array([hex_to_pixel(q, r, 1.0)
+                              for (q, r) in keys]))
+        _UV_CACHE[rmax] = uv
+    return uv
+
+
 def _sample_grid(warp, rmax, am, ii_am, W, H, half):
     """Sample the grid with the local adaptive threshold (INVERTED mask:
     dark ink = 255, so a bit is 1 when the box mean is above 127.5)."""
-    grid = {}
-    for k in range(0, rmax + 1):
-        for (q, r) in hex_ring(k):
-            u, v = warp(*hex_to_pixel(q, r, 1.0))
-            xi, yi = int(round(u)), int(round(v))
-            if 0 <= xi < W and 0 <= yi < H:
-                val = _box_mean(am, ii_am, np.array([xi]), np.array([yi]),
-                                half)[0]
-                grid[(q, r)] = 1 if val > 127.5 else 0
-            else:
-                grid[(q, r)] = 0
-    return grid
+    keys, UV = _model_uv(rmax)
+    x, y = warp(UV[:, 0], UV[:, 1])
+    xi = np.rint(x).astype(int)
+    yi = np.rint(y).astype(int)
+    ok = (xi >= 0) & (xi < W) & (yi >= 0) & (yi < H)
+    vals = np.zeros(len(keys), dtype=np.float32)
+    vals[ok] = _box_mean(am, ii_am, xi[ok], yi[ok], half)
+    bits = (vals > 127.5).astype(int)
+    bits[~ok] = 0
+    return dict(zip(keys, map(int, bits)))
 
 
 def _sample_grid_gray(warp, rmax, n8, ii, W, H, half, thr):
-    grid = {}
-    for k in range(0, rmax + 1):
-        for (q, r) in hex_ring(k):
-            u, v = warp(*hex_to_pixel(q, r, 1.0))
-            xi, yi = int(round(u)), int(round(v))
-            if 0 <= xi < W and 0 <= yi < H:
-                val = _box_mean(n8, ii, np.array([xi]), np.array([yi]),
-                                half)[0]
-                grid[(q, r)] = 1 if val < thr else 0
-            else:
-                grid[(q, r)] = 0
-    return grid
+    keys, UV = _model_uv(rmax)
+    x, y = warp(UV[:, 0], UV[:, 1])
+    xi = np.rint(x).astype(int)
+    yi = np.rint(y).astype(int)
+    ok = (xi >= 0) & (xi < W) & (yi >= 0) & (yi < H)
+    vals = np.full(len(keys), 255.0, dtype=np.float32)
+    vals[ok] = _box_mean(n8, ii, xi[ok], yi[ok], half)
+    bits = (vals < thr).astype(int)
+    bits[~ok] = 0
+    return dict(zip(keys, map(int, bits)))
 
 
 def _detect_rmax(vals, rmax_probe, thr):
@@ -478,12 +675,18 @@ def _rs_try(data_bytes, ecc):
 def decode_grid_robust(grid):
     """decode() plus a limited bit-flip repair search.
 
-    The RS code distance of 6 guarantees uniqueness: more than one
-    candidate can never exist.
+    Returns ``(text, stats, cost)`` where *cost* is the correction
+    ledger: the total number of payload bit positions explained as
+    errors (RS-corrected bits + applied flips).  Cost 0 means the
+    sampled grid is itself a valid codeword, which cannot happen by
+    chance (RS code distance 6), so it outranks any repaired result.
+    Within the repair radius the codeword is unique, so more than one
+    candidate can never exist for a single grid.
     """
     from .geometry import hex_distance
     try:
-        return decode(grid)
+        text, st = decode(grid)
+        return text, st, st.get("repair_bits", 0)
     except Exception:
         pass
     cells = sorted(grid.keys(), key=lambda c: hex_distance(*c))
@@ -496,7 +699,7 @@ def decode_grid_robust(grid):
     b80 = list(bits[:MODE_BITS])
     head = None
     try:
-        head = unpack_mode(bits_to_bytes(b80))
+        head = unpack_mode_ex(bits_to_bytes(b80))
     except Exception:
         pass
     if head is None:
@@ -504,7 +707,7 @@ def decode_grid_robust(grid):
             b2 = list(b80)
             b2[i] ^= 1
             try:
-                head = unpack_mode(bits_to_bytes(b2))
+                head = unpack_mode_ex(bits_to_bytes(b2))
                 b80 = b2
                 break
             except Exception:
@@ -515,14 +718,14 @@ def decode_grid_robust(grid):
             b2[i] ^= 1
             b2[j] ^= 1
             try:
-                head = unpack_mode(bits_to_bytes(b2))
+                head = unpack_mode_ex(bits_to_bytes(b2))
                 b80 = b2
                 break
             except Exception:
                 continue
     if head is None:
         raise ValueError("header unrecoverable even with bit flips")
-    rmax_m, mask_id, ec_pct, bc, data_len = head
+    rmax_m, mask_id, ec_pct, bc, data_len, compressed = head
     need = (data_len + sum(e for _, e in plan_blocks(data_len, ec_pct))) * 8
     if len(bits) < MODE_BITS + need:
         raise ValueError("not enough bits for the payload")
@@ -531,26 +734,36 @@ def decode_grid_robust(grid):
     stream = list(bits_to_bytes(payload))
     blocks = plan_blocks(data_len, ec_pct)
     out = bytearray()
+    cost = 0
     pos = 0
     for size, ecc in blocks:
         cw = stream[pos:pos + size + ecc]
         pos += size + ecc
         fixed = _rs_try(cw, ecc)
-        if fixed is None:
+        if fixed is not None:
+            full = list(fixed) + cw[len(fixed):]
+            cost += sum(bin(a ^ b).count("1")
+                        for a, b in zip(cw, full))
+        else:
             n = len(cw) * 8
             for i in range(n):
                 b2 = list(cw)
                 b2[i // 8] ^= (1 << (7 - i % 8))
                 fixed = _rs_try(b2, ecc)
                 if fixed is not None:
+                    cost += 1
+                    full = list(fixed) + b2[len(fixed):]
+                    cost += sum(bin(a ^ b).count("1")
+                                for a, b in zip(b2, full))
                     break
         if fixed is None:
             raise ValueError("block %d+%d unrecoverable" % (size, ecc))
         out += fixed
-    text = bytes(out).decode("utf-8")
+    text = payload_to_text(bytes(out), compressed)
     stats = {"rmax": rmax_m, "mask": mask_id, "ec": ec_pct,
-             "blocks": bc, "data_len": data_len}
-    return text, stats
+             "blocks": bc, "data_len": data_len,
+             "compressed": compressed, "repair_bits": cost}
+    return text, stats, cost
 
 
 # --------------------------------------------------- perspective fallbacks
@@ -578,8 +791,16 @@ def _dlt_h(obs):
 
 def _warp_from_h(Hm):
     def warp(u, v):
-        p = Hm @ np.array([u, v, 1.0])
-        return float(p[0] / p[2]), float(p[1] / p[2])
+        scalar = np.ndim(u) == 0 and np.ndim(v) == 0
+        u = np.atleast_1d(np.asarray(u, dtype=np.float64))
+        v = np.atleast_1d(np.asarray(v, dtype=np.float64))
+        px = Hm[0, 0] * u + Hm[0, 1] * v + Hm[0, 2]
+        py = Hm[1, 0] * u + Hm[1, 1] * v + Hm[1, 2]
+        pz = Hm[2, 0] * u + Hm[2, 1] * v + Hm[2, 2]
+        x, y = px / pz, py / pz
+        if scalar:
+            return float(x[0]), float(y[0])
+        return x, y
     return warp
 
 
@@ -639,7 +860,8 @@ def _annulus_icp_rescue(n8, ii, cx, cy, s, phi, thr, half, r_probe,
             for o in (True, False):
                 mp_model.append(mp_all[(ring, o)][::2])
         mp_model = np.vstack(mp_model)
-        mp_img = np.array([warp(u, v) for u, v in mp_model])
+        wx, wy = warp(mp_model[:, 0], mp_model[:, 1])
+        mp_img = np.column_stack([wx, wy])
         tree_w = cKDTree(mp_img)
         obs = []
         for ring in (2, 4):
@@ -676,15 +898,21 @@ def _annulus_icp_rescue(n8, ii, cx, cy, s, phi, thr, half, r_probe,
         warp = _warp_from_h(Hmat)
         grid = _sample_grid_gray(warp, r_probe, n8, ii, W, H, half, thr)
         try:
-            text, st = decode_grid_robust(grid)
+            text, st, _cost = decode_grid_robust(grid)
             return text, st, warp
         except Exception:
             continue
     return None
 
 
-def _affine_rescue(n8, ii, cx, cy, s, phi, thr, half, r_probe):
-    """Affine (+keystone) search judged by the RS header."""
+def _affine_rescue(n8, ii, cx, cy, s, phi, thr, half, r_probe,
+                   max_combos=1200):
+    """Affine (+keystone) search judged by the RS header.
+
+    Combos are ordered by total distortion magnitude, so successful
+    rescues cluster at the front; ``max_combos`` bounds the worst case
+    (hopeless images) instead of sweeping thousands of hypotheses.
+    """
     c0, s0_ = math.cos(phi), math.sin(phi)
 
     def make_warp(da, db, dc, dd, k=0.0):
@@ -702,7 +930,7 @@ def _affine_rescue(n8, ii, cx, cy, s, phi, thr, half, r_probe):
                                n8.shape[1], n8.shape[0], half, thr)
         dcells = [c for k in range(DATA_RING0, 9)
                   for c in hex_ring(k)][:80]
-        head, _ = _unpack_header([g8[c] for c in dcells])
+        head, _ = _unpack_header([g8[c] for c in dcells], max_flips=1)
         return head is not None
 
     vals_ad = [round(-0.12 + 0.02 * i, 3) for i in range(13)]
@@ -711,14 +939,14 @@ def _affine_rescue(n8, ii, cx, cy, s, phi, thr, half, r_probe):
               for da in vals_ad for dd in vals_ad
               for db in vals_sh for dc in vals_sh]
     combos.sort(key=lambda t: abs(t[0]) + abs(t[1]) + abs(t[2]) + abs(t[3]))
-    for da, db, dc, dd in combos:
+    for da, db, dc, dd in combos[:max_combos]:
         warp = make_warp(da, db, dc, dd)
         if not header_ok(warp):
             continue
         grid = _sample_grid_gray(warp, r_probe, n8, ii,
                                  n8.shape[1], n8.shape[0], half, thr)
         try:
-            text, st = decode_grid_robust(grid)
+            text, st, _cost = decode_grid_robust(grid)
             return text, st, warp
         except Exception:
             continue
@@ -735,8 +963,15 @@ def decode_image(image, max_dim=2400, verbose=False):
     """Decode a Hexatess symbol from a grayscale or BGR image array.
 
     Returns ``(text, stats)`` where *stats* contains ``rmax``, ``mask``,
-    ``ec``, ``blocks``, ``data_len``, plus ``sector`` (the model-frame
-    rotation that matched) and ``finder_hits`` (0-91).
+    ``ec``, ``blocks``, ``data_len``, ``compressed`` (spec v0.3 payload
+    flag), ``sector`` (the model-frame rotation that matched),
+    ``finder_hits`` (0-91) and ``repair_bits`` (the correction ledger
+    of the winning hypothesis).
+
+    Several finder poses per bullseye candidate are tried and the
+    decode with the lowest correction ledger wins; a zero-cost decode
+    (sampled grid == valid codeword) returns immediately.  This makes
+    the result robust against near-tie flips of the pose argmax.
 
     Raises :class:`RuntimeError` when no candidate decodes.
     """
@@ -751,62 +986,104 @@ def decode_image(image, max_dim=2400, verbose=False):
         print("candidates:", [(round(v, 1), int(x), int(y), round(s, 1))
                               for v, x, y, s in found])
     errors = []
+    started = time.perf_counter()
+
+    # A zero-cost decode means the sampled grid IS a codeword -- two
+    # codewords are >= 48 bits (RS distance 6) apart, so no other
+    # hypothesis can beat an exact match and it returns immediately.
+    # Any repaired decode (cost > 0) stays tentative: the runner-up
+    # poses are tried as well and the lowest ledger wins.  This is the
+    # safeguard against near-tie pose flips producing a plausible but
+    # wrong payload.
+
     for rank, (v0, cx0, cy0, s0) in enumerate(found[:3]):
         half = max(1, int(round(0.32 * s0)))
-        cx, cy, s, phi = refine_pose(n8, ii, cx0, cy0, s0, half)
+        poses = refine_pose(n8, ii, cx0, cy0, s0, half)
         W, H = n8.shape[1], n8.shape[0]
-        r_probe = min(MAX_RINGS,
-                      int(min(cx, cy, W - cx, H - cy) / (1.5 * s)) - 2)
-        am = _adaptive_mask(img, s)
-        ii_am = _integral(am)
-        warp0 = homo_finder_fit(n8, ii, cx, cy, s, phi,
-                                float(np.median(n8)), half)
-        hits = _finder_count(am, ii_am, warp0, half)
-        if verbose:
-            print("cand %d: s=%.1f finder %d/91" % (rank, s, hits))
-        if hits < 84:
-            errors.append("cand %d: finder %d/91" % (rank, hits))
-            continue
-        for m in range(6):
-            hc = _header_cells(m)
-            pts = np.array([warp0(*hex_to_pixel(q, r, 1.0))
-                            for (q, r) in hc])
-            xi = pts[:, 0].round().astype(int)
-            yi = pts[:, 1].round().astype(int)
-            ok = (xi >= 0) & (xi < W) & (yi >= 0) & (yi < H)
-            vals = np.full(len(xi), 255.0, dtype=np.float32)
-            vals[ok] = _box_mean(am, ii_am, xi[ok], yi[ok], half)
-            bits80 = [1 if v > 127.5 else 0 for v in vals]
-            head, fixed = _unpack_header(bits80, max_flips=2)
-            if head is None:
+        cand_success = False
+        cand_best = None                # (cost, -hits, -margin, text, st)
+        for pi, (pm, cx, cy, s, phi) in enumerate(poses):
+            r_probe = min(MAX_RINGS,
+                          int(min(cx, cy, W - cx, H - cy) / (1.5 * s)) - 2)
+            am = _adaptive_mask(img, s)
+            ii_am = _integral(am)
+            warp0 = homo_finder_fit(n8, ii, cx, cy, s, phi,
+                                    float(np.median(n8)), half)
+            hits = _finder_count(am, ii_am, warp0, half)
+            if verbose:
+                print("cand %d pose %d: s=%.1f margin=%.0f finder %d/91"
+                      % (rank, pi, s, pm, hits))
+            if hits < 84:
+                errors.append("cand %d pose %d: finder %d/91"
+                              % (rank, pi, hits))
                 continue
-            known = list(_ALL_FINDER) + hc
-            kbits = list(_ALL_EXP) + list(fixed)
-            F = _cell_features(known)
-            EXP = np.array(kbits, dtype=int)
-            base = np.array([warp0(*hex_to_pixel(q, r, 1.0))
-                             for (q, r) in known])
-            delta, _ = _coord_descent(am, ii_am, W, H, half, base, F, EXP,
-                                      np.zeros(12))
-            warp = _make_warp(warp0, delta)
-            grid = _sample_grid(warp, r_probe, am, ii_am, W, H, half)
-            try:
-                text, st = decode_grid_robust(_remap_grid(grid, m, r_probe))
+            for m in range(6):
+                hx, hy = warp0(_SECTOR_UV[m][:, 0], _SECTOR_UV[m][:, 1])
+                xi = hx.round().astype(int)
+                yi = hy.round().astype(int)
+                ok = (xi >= 0) & (xi < W) & (yi >= 0) & (yi < H)
+                vals = np.full(len(hx), 255.0, dtype=np.float32)
+                vals[ok] = _box_mean(am, ii_am, xi[ok], yi[ok], half)
+                bits80 = [1 if v > 127.5 else 0 for v in vals]
+                head, fixed = _unpack_header(bits80, max_flips=2)
+                if head is None:
+                    continue
+                rmax_m, mask_id_h, _ecp, _bcn, data_len_m, _comp = head
+                pad_cells, pad_bits = _padding_anchors(
+                    rmax_m, _ecp, data_len_m, mask_id_h, m)
+                known = _KNOWN_CELLS[m] + pad_cells
+                F = _cell_features(known)
+                EXP = np.array(list(_ALL_EXP) + list(fixed) + pad_bits,
+                               dtype=int)
+                uv_known = np.vstack([
+                    _KNOWN_UV[m],
+                    np.array([hex_to_pixel(q, r, 1.0)
+                              for (q, r) in pad_cells])
+                ]) if pad_cells else _KNOWN_UV[m]
+                bx, by = warp0(uv_known[:, 0], uv_known[:, 1])
+                base = np.column_stack([bx, by])
+                delta, _ = _coord_descent(am, ii_am, W, H, half, base,
+                                          F, EXP, np.zeros(12))
+                warp = _make_warp(warp0, delta)
+                grid = _sample_grid(warp, r_probe, am, ii_am, W, H, half)
+                try:
+                    text, st, cost = decode_grid_robust(
+                        _remap_grid(grid, m, r_probe))
+                except Exception as e:
+                    errors.append("cand %d pose %d sector %d: %s"
+                                  % (rank, pi, m, e))
+                    continue
                 st["sector"] = m
                 st["finder_hits"] = hits
-                return text, st
-            except Exception as e:
-                errors.append("cand %d sector %d: %s" % (rank, m, e))
+                if cost == 0:
+                    return text, st     # sampled grid == codeword
+                key = (cost, -hits, -pm)
+                if cand_best is None or key < cand_best[0]:
+                    cand_best = (key, text, st)
+                cand_success = True
+        if cand_success:
+            # this bullseye candidate decoded; its best hypothesis wins
+            # (runner-up poses were already tried when the first decode
+            # looked suspicious) -- no need for fallbacks or candidates
+            return cand_best[1], cand_best[2]
+        if rank > 0 and time.perf_counter() - started > 15.0:
+            errors.append("cand %d: skipped (timeout)" % rank)
+            continue
         # strong-perspective fallbacks (canonical frame, sector 0)
+        _pm, cx, cy, s, phi = poses[0]
+        r_probe = min(MAX_RINGS,
+                      int(min(cx, cy, W - cx, H - cy) / (1.5 * s)) - 2)
         thr_f = _finder_threshold(n8, ii, cx, cy, s, phi, half)
         for (dp, dsc) in [(0.0, 1.0), (3.0, 1.0), (-3.0, 1.0),
                           (0.0, 0.96), (0.0, 1.04)]:
-            res = _annulus_icp_rescue(n8, ii, cx, cy, s, phi, thr_f, half,
-                                      r_probe, dphi0=math.radians(dp),
+            res = _annulus_icp_rescue(n8, ii, cx, cy, s, phi, thr_f,
+                                      half, r_probe,
+                                      dphi0=math.radians(dp),
                                       ds0=dsc)
             if res is not None:
                 return res[0], dict(res[1], sector=0)
-        res = _affine_rescue(n8, ii, cx, cy, s, phi, thr_f, half, r_probe)
+        res = _affine_rescue(n8, ii, cx, cy, s, phi, thr_f, half,
+                             r_probe)
         if res is not None:
             return res[0], dict(res[1], sector=0)
         errors.append("cand %d: fallbacks failed" % rank)

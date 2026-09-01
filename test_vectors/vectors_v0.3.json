@@ -1,7 +1,7 @@
 {
-  "spec_version": "0.2",
-  "generator": "hexatess-code 0.3.0",
-  "generated": "2026-08-30",
+  "spec_version": "0.3",
+  "generator": "hexatess-code 0.3.1",
+  "generated": "2026-09-01",
   "field": {
     "primitive_poly": "0x11D",
     "generator_alpha": 2
@@ -12,7 +12,9 @@
       "name": "empty",
       "text": "",
       "ec_pct": 5,
+      "compress_mode": "auto",
       "data_len": 0,
+      "compressed": false,
       "rmax": 8,
       "mask": 1,
       "blocks": [
@@ -29,7 +31,9 @@
       "name": "one_byte",
       "text": "A",
       "ec_pct": 5,
+      "compress_mode": "auto",
       "data_len": 1,
+      "compressed": false,
       "rmax": 8,
       "mask": 3,
       "blocks": [
@@ -46,7 +50,9 @@
       "name": "hello",
       "text": "Hello, Hexatess!",
       "ec_pct": 30,
+      "compress_mode": "auto",
       "data_len": 16,
+      "compressed": false,
       "rmax": 11,
       "mask": 6,
       "blocks": [
@@ -63,7 +69,9 @@
       "name": "utf8_slo",
       "text": "ŠČŽ življenje je kodiranje",
       "ec_pct": 30,
+      "compress_mode": "auto",
       "data_len": 30,
+      "compressed": false,
       "rmax": 13,
       "mask": 4,
       "blocks": [
@@ -80,7 +88,9 @@
       "name": "utf8_emoji",
       "text": "bee 🐝 hive",
       "ec_pct": 50,
+      "compress_mode": "auto",
       "data_len": 13,
+      "compressed": false,
       "rmax": 10,
       "mask": 1,
       "blocks": [
@@ -97,7 +107,9 @@
       "name": "mid",
       "text": "Hexatess Code v0.2 reference vector",
       "ec_pct": 55,
+      "compress_mode": "auto",
       "data_len": 35,
+      "compressed": false,
       "rmax": 14,
       "mask": 4,
       "blocks": [
@@ -114,28 +126,28 @@
       "name": "digits",
       "text": "12345678901234567890123456789012345678901234567890123456789012345678901234567890",
       "ec_pct": 10,
-      "data_len": 80,
-      "rmax": 17,
-      "mask": 4,
+      "compress_mode": "auto",
+      "data_len": 21,
+      "compressed": true,
+      "rmax": 11,
+      "mask": 2,
       "blocks": [
         [
-          40,
-          4
-        ],
-        [
-          40,
-          4
+          21,
+          3
         ]
       ],
-      "mode_hex": "8c10102800e42fe71a92",
-      "grid_sha256": "4db7d18ce7ceec861759813f79ccf08fd8d360e86e0c44f2b4c46e55533763d6",
-      "grid_hex": "81ffe00007fffffe00000011820205001c85fce35252836b0dccf45052aa0f4d7c90f2230badad55b0b3836f2ddc745242aa4d4c7490d3238f8dbdd5b2a38b2f2cd47073422e4d5cf4d2d32bcf8cb5d192a30f2d3c5432734a6e6c5cf0f2c3afcd9cb59393befb46174566a960e1f0f83e1f06"
+      "mode_hex": "5a10080ac04e476440a5",
+      "grid_sha256": "1fc61e9c3cea18f951843d8f7919116cf0795858e2a92b9dd37c0446747afc6e",
+      "grid_hex": "81ffe00007fffffe0000000b4201015809c8ec8814babe6f2ddc9052830b1dbc5450a124682b482456a89947ddf87c1f0f80"
     },
     {
       "name": "url",
       "text": "https://example.org/hexatess",
       "ec_pct": 25,
+      "compress_mode": "auto",
       "data_len": 28,
+      "compressed": false,
       "rmax": 12,
       "mask": 5,
       "blocks": [
@@ -152,7 +164,9 @@
       "name": "min_ec",
       "text": "compact",
       "ec_pct": 5,
+      "compress_mode": "auto",
       "data_len": 7,
+      "compressed": false,
       "rmax": 9,
       "mask": 7,
       "blocks": [
@@ -169,7 +183,9 @@
       "name": "max_ec",
       "text": "resilience",
       "ec_pct": 90,
+      "compress_mode": "auto",
       "data_len": 10,
+      "compressed": false,
       "rmax": 10,
       "mask": 6,
       "blocks": [
@@ -186,44 +202,32 @@
       "name": "long_multiblock",
       "text": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
       "ec_pct": 30,
-      "data_len": 250,
-      "rmax": 30,
-      "mask": 1,
-      "blocks": [
-        [
-          50,
-          15
-        ],
-        [
-          50,
-          15
-        ],
-        [
-          50,
-          15
-        ],
-        [
-          50,
-          15
-        ],
-        [
-          50,
-          15
-        ]
-      ],
-      "mode_hex": "f130287d004817ab6909",
-      "grid_sha256": "6d4e9ce6f1a0e7cc2444ab6d6ce0530e9191b4f3ecb150807f2748b1080b1ae1",
-      "grid_hex": "81ffe00007fffffe0000001e26050fa00902f56d212159ddbeae224051d99faea6624159ddbeae226051d99faea6624159ddbfae226051d99fbea6624159ddbfae226051599fbea6624151ddbfae266051599fbea6224151ddbfae266051599dbea6224151dd9fae266041599dbea6224051dd9fae266041599dbeae224051dd9faea6604159ddbeae224051d99faea6604159ddbeae226051d99faea6624159ddbeae226051d99fbea6624159ddbfae226051599fbea6624151ddbfae226051599fbea6224151ddbfae266051599dbea6224151dd9fae266051599dbea6224051dd9fae266041599dbeae224051dd9faea66041599dbeae224051d99faea6604159ddbeae224051d99faea6624159df753da530a16c5cf9b22e70e92f532ce9f3d6896f0b6525551dec0f5ccee29aca18ee56978216c9f39f9692bddb542d2172b1e41ed8ba6a51e1ab713c6db1c7012d2a6d61740d682d4c4aa3e1f0"
-    },
-    {
-      "name": "max_capacity",
-      "text": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-      "ec_pct": 5,
-      "data_len": 329,
-      "rmax": 31,
+      "compress_mode": "auto",
+      "data_len": 12,
+      "compressed": true,
+      "rmax": 10,
       "mask": 0,
       "blocks": [
         [
+          12,
+          4
+        ]
+      ],
+      "mode_hex": "50300806401d4fe7c853",
+      "grid_sha256": "c8427c785a0b7b0fe82c64cde695056991adfe7d614d56c4375c48915c63e584",
+      "grid_hex": "81ffe00007fffffe0000000a060100c803a9fcf90a6ab63a3b51c395a52df8506ca3daab2660f87c1e00"
+    },
+    {
+      "name": "max_capacity",
+      "text": "\".9olTL<M:kp.`HKtfoWZ2;t'z\"*zV%PG+Ib9=q,:^6e4DFR[/;$bIP#9-%_Z5D?i1[je,dBJYPX\\kU[itg~ewd\"N2,>E1Hp>;JOp7Xf!3iTX0^[t/bIJKHQKL<i-0(UH(YS@7~4W=;P@M9;!#+>Q&]Q%%>B0,Adh~<^`!E6CZ6I+kb?0O\"Q>y${s$IY;3D3P+8>wNg{Hd&ga]}YPF7*_9C=07zRW*^wG/RD`)c4F%2+]UM<-755E\"XZ9b?,;LXXrmf?ZMal~9OMN\\=W=Q4[,HSTB4HE?c!<Dr*T0?M_cm9Q[(XN=*Y0idCAIQ7X=Pm6KPVZ1ag#E",
+      "ec_pct": 5,
+      "compress_mode": false,
+      "data_len": 329,
+      "compressed": false,
+      "rmax": 31,
+      "mask": 6,
+      "blocks": [
+        [
           47,
           3
         ],
@@ -252,9 +256,44 @@
           3
         ]
       ],
-      "mode_hex": "f80838a480f6132aa083",
-      "grid_sha256": "7b4eed5c469467a472a955ecfba588c99a515f280fe6a537ba3e24aa08fca632",
-      "grid_hex": "81ffe00007fffffe0000001f010714901ec26554106ea6604159ddbeae226051d99faea6624159ddbfae226051d99fbea6624159ddbfae226051599fbea6624151ddbfae266051599fbea6224151ddbfae266051599dbea6224151dd9fae266041599dbea6224051dd9fae266041599dbeae224051dd9faea66041599dbeae224051d99faea6604159ddbeae226051d99faea6624159ddbeae226051d99fbea6624159ddbfae226051599fbea6624151ddbfae226051599fbea6224151ddbfae266051599dbea6224151dd9fae266051599dbea6224051dd9fae266041599dbea6224051dd9faea66041599dbeae224051d99faea6604159ddbeae224051d99faea6624159ddbeae226051d99fbea6624159ddbfae226051d99fbea6624151ddbfae226051599fbea6224151ddbfae266051599fbea6224151dd9fae266051599dbea6224151dd9fae266041599dbea6224051dd9faea66041599dbeae225df7a64208ddbde7220018d5ffe62a0439d57bc43a9800"
+      "mode_hex": "fe0838a4802e4907860c",
+      "grid_sha256": "71e8e9afa66f020936ded735cd36accea661c22dff8381f8a3a8df24da8acbb8",
+      "grid_hex": "81ffe00007fffffe0000001fc107149005c920f0c192f06a04a7d05f132c8a2624575abca447c7973c7fe36a05cebdd2f0ea638ff0de71cc812c6dfcb332eeef87fc5a1c6fe60ead365afc8f2d0c7f763f4eebc1cdbff09ec865ced65addfe876241dfbc1fc807e7b59e3a5929208c1f517c0300655d95fdfc432fa1561292c807e05c595ddb28c503739ffdaf0402dddfb313a823e25fddbecd2b848cd87112c72142fdf1f081c80c80765d1f818dec9294912d81e645955d79a101ed92b9d26c8804261530bc41634c95f61bdbc9e06175b0dc23436e3dd55a5c6186235652784902c4f1789c734862ad72b112a3c22110b7df7b45cca0125a91894be39ef4d3de0780eddf70720385cf0159d199eacccc335d9fabe0c78db9df1988a68c733f3d6e2ac1adf8f03ec0a041305ad22ca5cea636f13d2b6c21dcd57d0e4104ed78fdd1ae20acff99b2b881e12273fc924e2ec157f45ddfa7a20c76fa50cd9f8e0856f65d8162e45844e5794b30155d7af613194080"
+    },
+    {
+      "name": "long_text_zlib",
+      "text": "Hexatess Code je eksperimentalna dvodimenzionalna koda na sestkotni mrezi: sestkotni iskalnik, orientacijski obroc, spiralna serializacija in Reed-Solomon popravki napak. Ker so moduli sestkotniki, je gostota informacij visja kot pri kvadratnih mrezah, simbol pa je blizu izotropen. Hexatess Code je eksperimentalna dvodimenzionalna koda na sestkotni mrezi: sestkotni iskalnik, orientacijski obroc, spiralna serializacija in Reed-Solomon popravki napak. Ker so moduli sestkotniki, je gostota informacij visja kot pri kvadratnih mrezah, simbol pa je blizu izotropen. Hexatess Code je eksperimentalna dvodimenzionalna koda na sestkotni mrezi: sestkotni iskalnik, orientacijski obroc, spiralna serializacija in Reed-Solomon popravki napak. Ker so moduli sestkotniki, je gostota informacij visja kot pri kvadratnih mrezah, simbol pa je blizu izotropen. ",
+      "ec_pct": 30,
+      "compress_mode": "auto",
+      "data_len": 203,
+      "compressed": true,
+      "rmax": 28,
+      "mask": 5,
+      "blocks": [
+        [
+          41,
+          13
+        ],
+        [
+          41,
+          13
+        ],
+        [
+          41,
+          13
+        ],
+        [
+          40,
+          12
+        ],
+        [
+          40,
+          12
+        ]
+      ],
+      "mode_hex": "e5302865c00685f55c72",
+      "grid_sha256": "0200f75222bf55fec2d1ccf6f6894fc9df879360b869b9c4c8bbaedbf745acc0",
+      "grid_hex": "81ffe00007fffffe0000001ca6050cb800d0beab8e44410f24b200f12d5b5e415b6ed353f2a1fb64135efd76b7038bdee9b3c239e5ae84fe576d9eeac9227b993a3a30a4ce2a497ab7314151f5221360578097961df66fdbdf14511dcd661ecc09e828c40f2a9b233c559232550a604f6dbf43f6bf09b3ce4049aa33f51c314ae8db743f36c62132b50ad0d766bc66c9e8de4103206267fc411d4aa7c418b2491f5f867fdd02c2adfd52004838c7bdf66da4d707ac9910a9b8493262c2732af30c5c169c9b0d80d186a39452ef4db44eccf1d9d43da5fa43b69a8692b2b8cad2e45efc2b03616d30e0928a2f6c72d9bb08ad107bdc5b65018f7734a57f77a1d5abb866d369a84cfb58465505738b497ef9eb90d51086c55fe9315905949aa5ef83e1f0783e0f07c1e0f87c1f0f83c1f078"
     }
   ],
   "decode_vectors": [

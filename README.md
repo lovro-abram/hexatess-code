@@ -51,10 +51,12 @@ text, stats = decode(grid)          # ('Hello, Hexatess!', {...})
 > specification and reference implementation are solid and heavily
 > tested (2,500+ tests, conformance vectors).  A **camera decoder**
 > (`hexatess.camera`, optional `[camera]` extra) already reads symbols
-> from real photographs — printed labels, foil transparencies, tilted
-> and rotated shots.  See the roadmap below.  Adopting a young format
-> is a deliberate bet; the [full format specification](SPECIFICATION.md)
-> is the insurance.
+> from real photographs in about a second — printed labels, foil
+> transparencies, tilted and rotated shots.  Since spec v0.3 payload
+> text is zlib-compressed automatically, so long texts fit into
+> considerably smaller symbols.  See the roadmap below.  Adopting a
+> young format is a deliberate bet; the [full format
+> specification](SPECIFICATION.md) is the insurance.
 
 ## Installation
 
@@ -77,19 +79,43 @@ hexatess --demo                       # demo symbol + robustness statistics
 hexatess decode-photo photo1.jpg photo2.jpg   # read symbols from photos
 ```
 
+Payload text is zlib-compressed automatically when that saves space
+(`--no-compress` disables it; the header flag keeps decoders fully
+backward compatible).
+
+## Payload compression (spec v0.3)
+
+One header bit marks the payload as a zlib stream. The encoder applies
+it only when it strictly helps, and decoders inflate transparently —
+symbols without the flag are byte-identical to v0.2. What that means
+in practice (EC 30 unless noted):
+
+| payload | raw | stored | symbol |
+|---|---|---|---|
+| 80 digits | 80 B | 21 B | rmax 17 → 11 |
+| `"X" × 250` | 250 B | 12 B | rmax 30 → 10 |
+| 849-byte Slovene paragraph | 849 B | 203 B | would not fit → rmax 28 |
+| short strings (≤ ~30 B) | — | unchanged | overhead wins |
+
+The maximum *stored* capacity is unchanged (329 bytes at EC 5), so
+incompressible data behaves exactly as before.
+
 ## API
 
 | Function | Description |
 |---|---|
-| `encode(text, ec_pct=30, mask_id="auto", min_rings=None)` | UTF-8 text → `(grid, params)`; `grid` maps axial `(q, r)` to `0/1` |
-| `decode(grid)` | grid → `(text, stats)`; RS-corrects transparently |
+| `encode(text, ec_pct=30, mask_id="auto", min_rings=None, compress="auto")` | UTF-8 text → `(grid, params)`; `grid` maps axial `(q, r)` to `0/1` |
+| `decode(grid)` | grid → `(text, stats)`; RS-corrects and inflates transparently |
 | `render(grid, path, size_px=18, ...)` | grid → PNG (pointy-top hexagons, quiet zone, supersampling) |
 | `sample_grid_from_image(path, rmax, ...)` | ideal re-sampling of a rendered PNG (self-test helper) |
 | `run_tests(...)` | noise/blob robustness statistics |
 | `hexatess.camera.decode_photo(path)` | photograph → `(text, stats)`; finder detection, perspective handling, adaptive sampling (optional `[camera]` extra) |
 
 `params` / `stats` contain `rmax` (radius in rings), `mask`, `ec`,
-`blocks` (list of `(data_bytes, ecc_bytes)`) and `data_len`.
+`blocks` (list of `(data_bytes, ecc_bytes)`), `data_len` (stored
+length) and `compressed`; `stats` also reports `repair_bits` (the RS
+correction ledger) and, for camera decodes, `sector` and
+`finder_hits`.
 
 ## Error-correction budget
 
@@ -113,7 +139,7 @@ concentrate inside whole bytes.
 The format is deliberately **specification-first**: everything needed
 for an independent implementation is in
 [`SPECIFICATION.md`](SPECIFICATION.md), and
-[`test_vectors/vectors_v0.2.json`](test_vectors/vectors_v0.2.json)
+[`test_vectors/vectors_v0.3.json`](test_vectors/vectors_v0.3.json)
 contains fixed inputs/outputs (grids, headers, damaged symbols, expected
 results) to verify conformance. If your Rust/Go/JS decoder passes the
 vectors, it speaks Hexatess Code.
@@ -123,12 +149,17 @@ vectors, it speaks Hexatess Code.
 1. ~~v0.2/0.3 — camera decoding~~ **done (v0.3.0):** `hexatess.camera`
    reads symbols from photographs — bullseye detection, homography +
    correction-field warp handling, adaptive sampling; validated on
-   printed foil with curl and glare.
-2. **Erasure decoding:** declare blob-occluded modules as
+   printed foil with curl and glare.  **v0.3.1:** ≈10× faster
+   (a typical 12 MP photo now takes about a second) plus stable
+   outer-ring sampling and mis-decode-proof pose selection.
+2. ~~v0.3 — payload compression~~ **done (v0.3.1):** zlib flag bit in
+   the header, applied automatically when it helps.
+3. **Erasure decoding:** declare blob-occluded modules as
    erasures → doubles correctable symbol counts.
-3. **JavaScript/TypeScript SDK** + online playground (generate a code
+4. **JavaScript/TypeScript SDK** + online playground (generate a code
    in the browser in 10 seconds).
-4. Larger radii / capacity beyond 329 bytes (breaking header change).
+5. Larger radii / capacity beyond 329 stored bytes (breaking header
+   change).
 
 Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 

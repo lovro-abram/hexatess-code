@@ -16,7 +16,7 @@ from test_vectors.generate_vectors import grid_from_hex
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-VECTOR_FILE = os.path.join(ROOT, "test_vectors", "vectors_v0.2.json")
+VECTOR_FILE = os.path.join(ROOT, "test_vectors", "vectors_v0.3.json")
 
 with open(VECTOR_FILE, "r", encoding="utf-8") as fh:
     VECTORS = json.load(fh)
@@ -29,13 +29,16 @@ def test_spec_version():
 @pytest.mark.parametrize("case", VECTORS["encode_vectors"],
                          ids=lambda c: c["name"])
 def test_encode_vector(case):
-    grid, p = encode(case["text"], ec_pct=case["ec_pct"])
+    grid, p = encode(case["text"], ec_pct=case["ec_pct"],
+                     compress=case.get("compress_mode", "auto"))
+    assert p["compressed"] == case["compressed"]
     assert p["rmax"] == case["rmax"]
     assert p["mask"] == case["mask"]
     assert p["data_len"] == case["data_len"]
     assert [list(b) for b in p["blocks"]] == case["blocks"]
     mode_hex = bytes(pack_mode(p["rmax"], p["mask"], p["ec"],
-                               len(p["blocks"]), p["data_len"])).hex()
+                               len(p["blocks"]), p["data_len"],
+                               compressed=p["compressed"])).hex()
     assert mode_hex == case["mode_hex"]
     from test_vectors.generate_vectors import canonical_hex
     gh = canonical_hex(grid, p["rmax"])

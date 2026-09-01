@@ -73,3 +73,15 @@ def test_scaled_tilted_photo_roundtrip():
     tilted = cv2.GaussianBlur(tilted, (3, 3), 0)
     got, st = decode_image(tilted)
     assert got == text
+
+
+def test_compressed_payload_photo_roundtrip():
+    text = "Hexatess " * 40          # 320 B -> zlib; exercises the
+    img, params = _render_bytes(text)   # inflate path of the camera pipe
+    assert params["compressed"] is True
+    canvas = np.full((img.shape[0] + 200, img.shape[1] + 200),
+                     238, dtype=np.uint8)
+    canvas[100:100 + img.shape[0], 100:100 + img.shape[1]] = img
+    got, st = decode_image(canvas)
+    assert got == text
+    assert st["compressed"] is True

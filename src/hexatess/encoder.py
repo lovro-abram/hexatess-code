@@ -2,7 +2,7 @@
 
 Turns UTF-8 text into a hexagonal module grid ``{(q, r): 0|1}``.
 
-Layout summary (specification v0.2):
+Layout summary (specification v0.3):
 
 * rings 0..4 -- hexagonal bullseye finder, ring ``k`` filled with
   ``1 - (k mod 2)`` (bit 1 = dark module; the centre module is DARK
@@ -12,9 +12,15 @@ Layout summary (specification v0.2):
 * rings 6..rmax -- payload bits in spiral order: header (80 bits,
   unmasked) followed by the masked payload stream; unused tail cells
   are padded with an alternating 0,1,... pattern.
+
+Since spec v0.3 the payload bytes may optionally be zlib-compressed
+(header flag bit; ``compress="auto"`` by default, i.e. compressed
+whenever that strictly reduces the stored length).
 """
 
 from __future__ import annotations
+
+import zlib
 
 from .geometry import hex_ring, ring_capacity
 from .header import (
@@ -34,7 +40,8 @@ from .masks import select_mask
 from .reedsolomon import rs_encode_msg
 
 
-def encode(text: str, ec_pct: int = 30, mask_id="auto", min_rings=None):
+def encode(text: str, ec_pct: int = 30, mask_id="auto", min_rings=None,
+           compress="auto"):
     """Encode UTF-8 ``text`` into a hexagonal grid.
 
     Parameters
@@ -48,19 +55,43 @@ def encode(text: str, ec_pct: int = 30, mask_id="auto", min_rings=None):
         Force a mask (0..7) or let the encoder pick the best.
     min_rings : int | None
         Force a minimum symbol radius (1..31), e.g. for uniform look.
+    compress : "auto" | bool
+        Payload compression (spec v0.3 header flag).  ``"auto"``
+        (default) applies zlib level 9 whenever it strictly reduces
+        the stored length; ``True`` forces compression, ``False``
+        stores the raw UTF-8 bytes (byte-identical to spec v0.2
+        symbols).
 
     Returns
     -------
     (grid, params)
         ``grid`` maps axial coordinates ``(q, r)`` to 0/1.
         ``params`` is a dict with keys ``rmax``, ``mask``, ``ec``,
-        ``blocks`` (list of ``(size, ecc)``) and ``data_len``.
+        ``blocks`` (list of ``(size, ecc)``), ``data_len`` (stored
+        length) and ``compressed``.
     """
     if not MIN_EC_PCT <= ec_pct <= MAX_EC_PCT or ec_pct % 5:
         raise ValueError(
             "ec_pct must be %d..%d in steps of %d"
             % (MIN_EC_PCT, MAX_EC_PCT, 5))
-    data = text.encode("utf-8")
+    raw = text.encode("utf-8")
+    if len(raw) > MAX_DATA_BYTES:
+        raise ValueError(
+            "the radius limit supports up to %d bytes of data"
+            % MAX_DATA_BYTES)
+    compressed = False
+    if compress == "auto":
+        packed = zlib.compress(raw, 9)
+        if len(packed) < len(raw):
+            data, compressed = packed, True
+        else:
+            data = raw
+    elif compress is True:
+        data, compressed = zlib.compress(raw, 9), True
+    elif compress is False:
+        data = raw
+    else:
+        raise ValueError("compress must be 'auto', True or False")
     if len(data) > MAX_DATA_BYTES:
         raise ValueError(
             "the radius limit supports up to %d bytes of data"
@@ -103,7 +134,8 @@ def encode(text: str, ec_pct: int = 30, mask_id="auto", min_rings=None):
         best_mask = mask_id
 
     # --- header with final mask id, then the full bitstream.
-    mode = pack_mode(rmax, best_mask, ec_pct, len(blocks), len(data))
+    mode = pack_mode(rmax, best_mask, ec_pct, len(blocks), len(data),
+                     compressed=compressed)
     bits = bytes_to_bits(mode) + payload
 
     # --- place modules: bullseye + key + spiral payload.
@@ -121,4 +153,5 @@ def encode(text: str, ec_pct: int = 30, mask_id="auto", min_rings=None):
     for idx, c in enumerate(data_cells):
         grid[c] = bits[idx] if idx < len(bits) else 0
     return grid, {"rmax": rmax, "mask": best_mask, "ec": ec_pct,
-                  "blocks": blocks, "data_len": len(data)}
+                  "blocks": blocks, "data_len": len(data),
+                  "compressed": compressed}

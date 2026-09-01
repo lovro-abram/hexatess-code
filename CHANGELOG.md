@@ -5,6 +5,54 @@ The format follows [Keep a Changelog](https://keepachangelog.com/);
 versioning follows semver. **Spec** = symbol format version,
 **lib** = reference implementation version.
 
+## [0.3.1] — 2026-09-01
+
+### Added (spec 0.3) — payload compression
+- **zlib payload compression** via a new header flag (byte 4, bit 6;
+  the former padding).  Encoders compress automatically whenever that
+  strictly reduces the stored length (`compress="auto"` default;
+  `compress=False` reproduces byte-identical v0.2 symbols, CLI
+  opt-out `--no-compress`).  Decoders inflate transparently.
+- Effective text capacity rises accordingly: an 849-byte Slovene
+  paragraph stores in 203 bytes and fits at rmax 28 (uncompressed it
+  exceeds the radius limit), `"X" × 250` stores in 12 bytes, 80
+  digits in 21.  Incompressible payloads are unaffected; the maximum
+  *stored* capacity stays 329 bytes (EC 5).
+- `unpack_mode_ex` / `payload_to_text` API additions; `encode`
+  params and `decode` stats gained `compressed`, and the RS repair
+  ledger `repair_bits` is now reported.
+- Conformance vectors regenerated for spec 0.3:
+  `test_vectors/vectors_v0.3.json` (new cases `max_capacity`
+  incompressible raw and `long_text_zlib` natural text).
+
+### Changed — camera decoder speed (~10x)
+- The illumination background is now computed at 1/8 resolution
+  instead of a full-resolution Gaussian with a ~1800-tap kernel,
+  which alone consumed ~85 % of a v0.3.0 scan.  Finder search and
+  pose refinement are vectorized (NumPy) and grid sampling is
+  batched.  Measured on 12 MP photos: **6-8 s → ≈1 s per scan**
+  (0.5-2.5 s on the reference machine, depending on warp; the curled
+  transparency dropped to ~0.5 s).  Failed scans are bounded too
+  (affine fallback capped, later candidates time-boxed), so an
+  unreadable image no longer sweeps thousands of hypotheses for a
+  minute.
+
+### Fixed — camera decoder robustness
+- **Outer-ring sampling stabilized by padding anchors.**  The tail
+  padding of the data region is an alternating 0,1,0,1… pattern known
+  as soon as the header passes RS, so those outer-edge cells are used
+  as extra anchors for the polynomial correction field.  This removes
+  the pure-extrapolation regime on rings beyond the header that could
+  produce ~18 scattered sampling errors on slightly warped shots.
+- **Mis-decode-proof pose selection.**  The decoder tries the top-3
+  finder poses per bullseye candidate and ranks successful decodes by
+  their correction ledger (`repair_bits`); only a zero-cost decode
+  (sample == valid codeword, unambiguous by the RS distance of 6)
+  returns immediately.  This removes a rare but real mis-decode where
+  a near-tie pose flip produced scattered bit errors that the limited
+  flip search resolved to a *plausible but wrong* payload
+  (`'Ba\`Fam)lnnro'` instead of `'@abram.lovro'`).
+
 ## [0.3.0] — 2026-08-31
 
 ### Added
