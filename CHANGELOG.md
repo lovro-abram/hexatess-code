@@ -50,8 +50,7 @@ versioning follows semver. **Spec** = symbol format version,
   (sample == valid codeword, unambiguous by the RS distance of 6)
   returns immediately.  This removes a rare but real mis-decode where
   a near-tie pose flip produced scattered bit errors that the limited
-  flip search resolved to a *plausible but wrong* payload
-  (`'Ba\`Fam)lnnro'` instead of `'@abram.lovro'`).
+  flip search resolved to a *plausible but wrong* payload.
 
 ## [0.3.0] — 2026-08-31
 
