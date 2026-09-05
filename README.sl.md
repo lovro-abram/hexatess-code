@@ -137,9 +137,11 @@ celih bajtov.
 
 ## Implementirajte jo v svojem jeziku
 
-V repozitoriju že je **čisti JavaScript kodirnik** — glej
-[`javascript/`](javascript/) (brez odvisnosti, bitno identičen Python
-referenči za nestisnjene simbole, vključuje brskalniški demo).
+V repozitoriju že sta **čisti JavaScript kodirnik in dekodirnik** —
+glej [`javascript/`](javascript/) (brez odvisnosti, bitno identično
+Python referenci za nestisnjene simbole) in brskalniški playground
+[`demo.html`](demo.html) v korenu repozitorija (kodiranje +
+dekodiranje, vključno s čistimi pokončnimi slikami).
 
 Format je namenoma **specifikacija-na-prvem-mestu**: vse, kar potrebujete
 za neodvisno implementacijo, je v [`SPECIFICATION.md`](SPECIFICATION.md),
@@ -163,8 +165,9 @@ Rust/Go/JS prenese vektorje, govori Hexatess.
 3. **Dekodiranje z izbrisi:** moduli pod madežem se razglasijo
    za izbrise → podvojena zmogljivost popravka.
 4. **JavaScript/TypeScript SDK** + spletni playground (koda v brskalniku
-   v 10 sekundah) — **kodirnik končan:** [`javascript/`](javascript/);
-   naslednja sta dekodirnik in gostovani playground.
+   v 10 sekundah) — **kodirnik in dekodirnik končana:**
+   [`javascript/`](javascript/) + [`demo.html`](demo.html);
+   naslednji je gostovani playground (GitHub Pages).
 5. Večji radiji / kapaciteta nad 329 shranjenimi bajti (nezdružljiva
    sprememba glave).
 

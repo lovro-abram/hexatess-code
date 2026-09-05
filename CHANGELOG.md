@@ -5,6 +5,48 @@ The format follows [Keep a Changelog](https://keepachangelog.com/);
 versioning follows semver. **Spec** = symbol format version,
 **lib** = reference implementation version.
 
+## [0.4.1] — 2026-09-05
+
+### Added — pure-JavaScript decoder + playground upgrade
+- **`javascript/hexatess-decoder.js`**: the complete decoder in
+  zero-dependency plain JavaScript — spiral deserialization, RS-protected
+  mode message, mask removal, per-block Reed-Solomon correction
+  (syndromes → Berlekamp–Massey → Chien → Forney over GF(256), 0x11D),
+  transparent zlib inflation and strict UTF-8 validation.  The inflator
+  supports stored, fixed-Huffman **and dynamic-Huffman** DEFLATE blocks,
+  so symbols written by Python's `zlib -9` decode as well as those
+  written by the project's own fixed-Huffman encoder.
+  API: `decode(grid)` → `{text, stats}` (stats mirror the Python
+  decoder, including the `repairBits` ledger), plus `decodeHex`,
+  `gridFromHex` and `payloadToText`; UMD (browser global
+  `HexatessDecode`, merged into `Hexatess` when the encoder is loaded,
+  or Node `require`).
+- **Conformance**: all 6 decode vectors pass, including the
+  deterministically damaged symbols (exact `repairBits` accounting,
+  header/ECC flips absorbed silently exactly like Python) and the
+  expected-failure case.  Round-trips over texts × EC 5–90 × masks 0–7
+  × compression modes; error injection within and beyond RS capacity;
+  the inflator verified against Node's own zlib (levels 0/1/6/9 =
+  stored, fixed and dynamic Huffman) and against Python-encoded
+  compressed symbols; two-way JS↔Python cross-validation.
+  `node javascript/test_decoder.js`: 136 checks.
+- **`demo.html` moved to the repository root** and upgraded into the
+  full playground: the encoder panel is unchanged, and a new **Decode**
+  panel can (a) decode the live symbol as an instant round trip and
+  (b) decode an uploaded PNG/JPEG/WebP/SVG of a clean, upright symbol —
+  a self-contained scanner (Otsu thresholding, bullseye-centre
+  refinement, run-length cell-size estimation, hex-lattice sampling
+  with size-correction retries) locates and samples the symbol, then
+  hands the grid to the JS decoder.  Photographic/tilted capture
+  remains the domain of the Python camera pipeline.
+- `javascript/test_encoder.js` (92 checks) still green; CI gained a
+  JavaScript job running both suites on Node 18.
+
+### Changed
+- Version metadata only: Python package 0.4.1, spec stays **v0.3**;
+  conformance vectors regenerated (provenance fields only, vector data
+  byte-identical).
+
 ## [0.4.0] — 2026-09-02
 
 ### Added — pure-JavaScript encoder (experimental)

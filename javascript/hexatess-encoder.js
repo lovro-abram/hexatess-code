@@ -58,7 +58,7 @@
   var MAX_DATA_BYTES = 4095;                     // 12-bit length field
   var COMPRESSED_FLAG = 0x40;                    // header byte 4, bit 6
 
-  var VERSION = "0.4.0";
+  var VERSION = "0.4.1";
   var SPEC_VERSION = "0.3";
 
   // ------------------------------------------------------------------

@@ -34,3 +34,15 @@ jobs:
         run: pytest -v
       - name: Conformance vectors self-check
         run: python test_vectors/generate_vectors.py --verify
+
+  javascript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+      - name: Run JavaScript conformance tests
+        run: |
+          node javascript/test_encoder.js
+          node javascript/test_decoder.js
