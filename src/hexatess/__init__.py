@@ -61,7 +61,7 @@ from .reedsolomon import rs_correct_msg, rs_encode_msg
 from .render import render, sample_grid_from_image
 from .resilience import add_blob_damage, add_random_noise, run_tests
 
-__version__ = "0.3.1"
+__version__ = "0.4.0"
 SPEC_VERSION = "0.3"
 
 __all__ = [

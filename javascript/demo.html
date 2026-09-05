@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hexatess Code — JavaScript encoder playground</title>
+<style>
+  :root {
+    --honey: #92761f;
+    --honey-soft: #f3ecd8;
+    --ink: #242218;
+    --ink-soft: #6b6353;
+    --bg: #faf7ef;
+    --card: #ffffff;
+    --line: #e5dfcf;
+    --ok: #2e7d32;
+    --err: #b3261e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 2rem 1.2rem 4rem;
+    background: var(--bg); color: var(--ink);
+    font: 16px/1.55 "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+  .wrap { max-width: 1060px; margin: 0 auto; }
+  h1 { font-size: 1.55rem; margin: 0 0 .2rem; }
+  h1 .hex { color: var(--honey); }
+  .sub { color: var(--ink-soft); margin: 0 0 1.6rem; font-size: .95rem; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4rem; align-items: start; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 1.1rem 1.2rem;
+  }
+  .card h2 { font-size: .82rem; letter-spacing: .08em; text-transform: uppercase;
+             color: var(--honey); margin: 0 0 .9rem; }
+  label { display: block; font-size: .86rem; color: var(--ink-soft); margin: .8rem 0 .25rem; }
+  textarea {
+    width: 100%; min-height: 130px; resize: vertical;
+    border: 1px solid var(--line); border-radius: 8px; padding: .6rem .7rem;
+    font: inherit; background: #fffdf8;
+  }
+  textarea:focus, select:focus { outline: 2px solid var(--honey); outline-offset: 0; border-color: var(--honey); }
+  select { border: 1px solid var(--line); border-radius: 8px; padding: .35rem .5rem;
+           background: #fffdf8; font: inherit; }
+  .row { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .row > div { flex: 1; min-width: 130px; }
+  input[type=range] { width: 100%; accent-color: var(--honey); }
+  .val { font-weight: 600; color: var(--ink); }
+  #preview { display: flex; justify-content: center; align-items: center; min-height: 300px;
+             background:
+               repeating-conic-gradient(#f6f2e6 0% 25%, #fdfbf4 0% 50%) 0 0/22px 22px;
+             border: 1px solid var(--line); border-radius: 10px; padding: .8rem; }
+  #preview svg { max-width: 100%; height: auto; filter: drop-shadow(0 2px 6px rgba(60,50,20,.12)); }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin-top: .9rem; }
+  .stat { background: var(--honey-soft); border-radius: 8px; padding: .45rem .6rem; }
+  .stat b { display: block; font-size: 1.02rem; }
+  .stat span { font-size: .72rem; color: var(--ink-soft); }
+  #status { margin-top: .7rem; font-size: .88rem; min-height: 1.3em; }
+  #status.err { color: var(--err); }
+  #status.ok { color: var(--ok); }
+  .btns { display: flex; gap: .6rem; margin-top: .9rem; flex-wrap: wrap; }
+  button {
+    border: 1px solid var(--honey); color: var(--honey); background: #fff;
+    border-radius: 8px; padding: .45rem .9rem; font: inherit; cursor: pointer;
+  }
+  button:hover { background: var(--honey); color: #fff; }
+  footer { margin-top: 1.6rem; font-size: .82rem; color: var(--ink-soft); }
+  footer a { color: var(--honey); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><span class="hex">⬡</span> Hexatess Code — <span class="hex">JavaScript encoder</span></h1>
+  <p class="sub">Pure-JavaScript encoder, spec v0.3 (byte-identical to the Python reference
+     for uncompressed symbols). Decoder: coming soon. Type below — the symbol updates live.</p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Input</h2>
+      <textarea id="text" spellcheck="false">Hello, Hexatess! Šestkotniki so kul. 🐝</textarea>
+
+      <div class="row">
+        <div>
+          <label for="ec">Error correction: <span class="val" id="ecVal">30%</span></label>
+          <input type="range" id="ec" min="5" max="90" step="5" value="30">
+        </div>
+        <div>
+          <label for="comp">Compression</label>
+          <select id="comp">
+            <option value="auto" selected>auto (deflate)</option>
+            <option value="true">force</option>
+            <option value="false">off (raw UTF-8)</option>
+          </select>
+        </div>
+        <div>
+          <label for="mask">Mask</label>
+          <select id="mask">
+            <option value="auto" selected>auto</option>
+            <option value="0">0</option><option value="1">1</option>
+            <option value="2">2</option><option value="3">3</option>
+            <option value="4">4</option><option value="5">5</option>
+            <option value="6">6</option><option value="7">7</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="status" aria-live="polite"></div>
+    </div>
+
+    <div class="card">
+      <h2>Symbol</h2>
+      <div id="preview"></div>
+      <div class="stats" id="stats"></div>
+      <div class="btns">
+        <button id="dlSvg">Download SVG</button>
+        <button id="dlPng">Download PNG</button>
+        <button id="copySvg">Copy SVG</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>Hexatess Code · spec v0.3 ·
+    <a href="https://github.com/lovro-abram/hexatess-code">github.com/lovro-abram/hexatess-code</a>
+    · MIT license</footer>
+</div>
+
+<script src="hexatess-encoder.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var lastSVG = null;
+
+  function fmtStats(p, cells) {
+    var ecc = 0, i;
+    for (i = 0; i < p.blocks.length; i++) ecc += p.blocks[i][1];
+    var stats = [
+      ["rmax", p.rmax], ["mask", p.mask], ["EC", p.ec + "%"],
+      ["stored", p.dataLen + " B"], ["blocks", p.blocks.length +
+        " (" + ecc + " ecc)"], ["modules", cells]
+    ];
+    var html = "";
+    stats.forEach(function (s) {
+      html += '<div class="stat"><b>' + s[1] + "</b><span>" + s[0] + "</span></div>";
+    });
+    return html;
+  }
+
+  function update() {
+    var text = $("text").value;
+    var status = $("status");
+    status.className = "";
+    try {
+      var comp = $("comp").value;
+      var opts = {
+        ecPct: parseInt($("ec").value, 10),
+        compress: comp === "auto" ? "auto" : (comp === "true"),
+        mask: $("mask").value === "auto" ? "auto" : parseInt($("mask").value, 10)
+      };
+      var r = Hexatess.encode(text, opts);
+      var svg = Hexatess.renderSVG(r.grid, { size: 16 });
+      $("preview").innerHTML = svg;
+      lastSVG = svg;
+      var cells = 0;
+      r.grid.forEach(function () { cells++; });
+      $("stats").innerHTML = fmtStats(r.params, cells);
+      status.textContent = r.params.compressed
+        ? "payload deflate-compressed: " + new TextEncoder().encode(text).length +
+          " B → " + r.params.dataLen + " B"
+        : "stored uncompressed (" + r.params.dataLen + " B)";
+      status.className = "ok";
+    } catch (e) {
+      $("preview").innerHTML = "";
+      $("stats").innerHTML = "";
+      lastSVG = null;
+      status.textContent = e.message;
+      status.className = "err";
+    }
+  }
+
+  function download(name, blob) {
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () {
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }, 400);
+  }
+
+  $("dlSvg").addEventListener("click", function () {
+    if (!lastSVG) return;
+    download("hexatess.svg",
+             new Blob([lastSVG], { type: "image/svg+xml" }));
+  });
+
+  $("copySvg").addEventListener("click", function () {
+    if (lastSVG && navigator.clipboard)
+      navigator.clipboard.writeText(lastSVG);
+  });
+
+  $("dlPng").addEventListener("click", function () {
+    if (!lastSVG) return;
+    // Redraw the symbol on a canvas (3x supersampling, like the Python renderer).
+    try {
+      var r = Hexatess.encode($("text").value, currentOpts());
+      var size = 18, quiet = 1.5, ss = 3;
+      var rmax = r.params.rmax;
+      var W = Math.sqrt(3) * size * (2 * rmax + 1 + 2 * quiet);
+      var Hh = 1.5 * size * (2 * rmax + 2 * quiet + 2);
+      var c1 = document.createElement("canvas");
+      c1.width = Math.round(W * ss); c1.height = Math.round(Hh * ss);
+      var ctx = c1.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, c1.width, c1.height);
+      ctx.fillStyle = "#181612";
+      var cx0 = c1.width / 2, cy0 = c1.height / 2, s = size * ss, rad = s * 0.995;
+      r.grid.forEach(function (val, k) {
+        if (!val) return;
+        var p = k.split(",");
+        var q = parseInt(p[0], 10), rr = parseInt(p[1], 10);
+        var x = s * Math.sqrt(3) * (q + rr / 2);
+        var y = s * 1.5 * rr;
+        ctx.beginPath();
+        for (var i = 0; i < 6; i++) {
+          var ang = Math.PI / 180 * (60 * i - 30);
+          var px = cx0 + x + rad * Math.cos(ang);
+          var py = cy0 + y + rad * Math.sin(ang);
+          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+      });
+      var c2 = document.createElement("canvas");
+      c2.width = Math.round(W); c2.height = Math.round(Hh);
+      var ctx2 = c2.getContext("2d");
+      ctx2.imageSmoothingEnabled = true;
+      ctx2.imageSmoothingQuality = "high";
+      ctx2.drawImage(c1, 0, 0, c2.width, c2.height);
+      c2.toBlob(function (b) { download("hexatess.png", b); }, "image/png");
+    } catch (e) { /* status already shows the error */ }
+  });
+
+  function currentOpts() {
+    var comp = $("comp").value;
+    return {
+      ecPct: parseInt($("ec").value, 10),
+      compress: comp === "auto" ? "auto" : (comp === "true"),
+      mask: $("mask").value === "auto" ? "auto" : parseInt($("mask").value, 10)
+    };
+  }
+
+  var timer = null;
+  function onChange() {
+    clearTimeout(timer);
+    timer = setTimeout(update, 120);
+  }
+  ["text", "ec", "comp", "mask"].forEach(function (id) {
+    $(id).addEventListener("input", onChange);
+  });
+  $("ec").addEventListener("input", function () {
+    $("ecVal").textContent = this.value + "%";
+  });
+
+  update();
+})();
+</script>
+</body>
+</html>

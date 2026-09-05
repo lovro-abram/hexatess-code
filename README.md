@@ -136,6 +136,10 @@ concentrate inside whole bytes.
 
 ## Implement it in your own language
 
+A **pure-JavaScript encoder** already ships in this repository — see
+[`javascript/`](javascript/) (zero dependencies, byte-identical to the
+Python reference for uncompressed symbols, includes a browser demo).
+
 The format is deliberately **specification-first**: everything needed
 for an independent implementation is in
 [`SPECIFICATION.md`](SPECIFICATION.md), and
@@ -157,7 +161,8 @@ vectors, it speaks Hexatess Code.
 3. **Erasure decoding:** declare blob-occluded modules as
    erasures → doubles correctable symbol counts.
 4. **JavaScript/TypeScript SDK** + online playground (generate a code
-   in the browser in 10 seconds).
+   in the browser in 10 seconds) — **encoder done:**
+   [`javascript/`](javascript/); decoder + hosted playground next.
 5. Larger radii / capacity beyond 329 stored bytes (breaking header
    change).
 

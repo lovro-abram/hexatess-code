@@ -1,0 +1,21 @@
+{
+  "name": "hexatess-code",
+  "version": "0.4.0",
+  "description": "Pure-JavaScript encoder for Hexatess Code — a hexagonal 2D barcode (spec v0.3). Zero dependencies.",
+  "main": "hexatess-encoder.js",
+  "files": ["hexatess-encoder.js", "demo.html", "README.md"],
+  "scripts": {
+    "test": "node test_encoder.js"
+  },
+  "keywords": [
+    "barcode", "2d-barcode", "hexagonal", "hexagon", "qrcode-alternative",
+    "reed-solomon", "error-correction", "deflate", "spec-v0.3"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lovro-abram/hexatess-code.git"
+  },
+  "homepage": "https://github.com/lovro-abram/hexatess-code",
+  "bugs": "https://github.com/lovro-abram/hexatess-code/issues"
+}

@@ -43,7 +43,7 @@ from hexatess import (                      # noqa: E402
 HERE = os.path.dirname(os.path.abspath(__file__))
 VECTOR_FILE = os.path.join(HERE, "vectors_v0.3.json")
 
-GENERATED = "2026-09-01"
+GENERATED = "2026-09-02"
 
 
 def _incompressible(n):

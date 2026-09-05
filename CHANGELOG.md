@@ -5,6 +5,31 @@ The format follows [Keep a Changelog](https://keepachangelog.com/);
 versioning follows semver. **Spec** = symbol format version,
 **lib** = reference implementation version.
 
+## [0.4.0] — 2026-09-02
+
+### Added — pure-JavaScript encoder (experimental)
+- **`javascript/`**: a zero-dependency encoder for spec v0.3 in plain
+  JavaScript (UMD — browser global `Hexatess` and Node `require`),
+  a 1:1 port of the Python reference.
+  `hexatess-encoder.js` (encode, SVG render, canonical serialization),
+  `demo.html` (self-contained browser playground: live preview, EC
+  slider, compression and mask controls, SVG/PNG download — works from
+  `file://`), `test_encoder.js`, `package.json` (npm release later).
+- Conformance: **10/10 uncompressed vectors byte-identical**
+  (`grid_hex`, `mode_hex`, mask, data length) against
+  `test_vectors/vectors_v0.3.json` (92 JS checks); cross-validated
+  with the Python decoder on 23 additional cases including
+  deflate-compressed payloads, emoji, binary-ish and empty inputs.
+- Self-contained **fixed-Huffman DEFLATE** compressor (RFC 1950/1951)
+  with hash-chain LZ77; streams verified with Python's `zlib`.
+  Compressed sizes are encoder-specific per the spec — the JS
+  compressor stores slightly more than `zlib -9` on natural text and
+  occasionally less (80 digits: 20 B vs 21 B).
+- API mirrors the Python encoder: `encode(input, {ecPct, mask,
+  minRings, compress})` → `{grid, params}`; `renderSVG`,
+  `canonicalHex`, `gridToJSON`, plus `internals` (GF(256), RS, header,
+  masks, geometry, DEFLATE) for third-party implementations.
+
 ## [0.3.1] — 2026-09-01
 
 ### Added (spec 0.3) — payload compression
@@ -50,7 +75,8 @@ versioning follows semver. **Spec** = symbol format version,
   (sample == valid codeword, unambiguous by the RS distance of 6)
   returns immediately.  This removes a rare but real mis-decode where
   a near-tie pose flip produced scattered bit errors that the limited
-  flip search resolved to a *plausible but wrong* payload.
+  flip search resolved to a *plausible but wrong* payload
+  (`'Ba\`Fam)lnnro'` instead of `'@abram.lovro'`).
 
 ## [0.3.0] — 2026-08-31
 
